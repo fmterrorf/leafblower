@@ -55,6 +55,7 @@ defmodule Leafblower.GameStatem do
   def subscribe(id), do: Phoenix.PubSub.subscribe(Leafblower.PubSub, topic(id))
   def via_tuple(name), do: ProcessRegistry.via_tuple({__MODULE__, name})
 
+  @spec get_state(any()) :: {state(), data()}
   def get_state(game), do: GenStateMachine.call(game, :get_state)
 
   @impl true
