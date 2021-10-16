@@ -1,9 +1,17 @@
 defmodule LeafblowerWeb.GameSplashLive do
   use LeafblowerWeb, :live_view
 
+  def mount(_param, %{"current_user_id" => user_id}, socket) do
+    {:ok, assign(socket, user_id: user_id)}
+  end
+
   def handle_event("new_game", _value, socket) do
     id = Ecto.UUID.generate()
-    Leafblower.GameCache.new_game(id: id)
+
+    :ok =
+      [id: id]
+      |> Leafblower.GameCache.new_game()
+      |> Leafblower.GameStatem.join_player(socket.assigns.user_id)
 
     {:noreply,
      socket

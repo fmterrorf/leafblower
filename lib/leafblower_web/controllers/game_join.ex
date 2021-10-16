@@ -1,4 +1,4 @@
-defmodule LeafblowerWeb.GameLive do
+defmodule LeafblowerWeb.GameNewLive do
   use LeafblowerWeb, :live_view
   alias Leafblower.{GameStatem}
 
@@ -15,7 +15,6 @@ defmodule LeafblowerWeb.GameLive do
 
     {:ok, assign(socket, game_state: state, game_data: data)}
   end
-
 
   @impl true
   def handle_info({:game_state_changed, state, data}, socket) do

@@ -162,7 +162,7 @@ defmodule Leafblower.GameStatem do
   end
 
   def handle_event(:internal, :broadcast, state, data) do
-    :ok = Phoenix.PubSub.broadcast(Leafblower.PubSub, topic(data.id), {state, data})
+    :ok = Phoenix.PubSub.broadcast(Leafblower.PubSub, topic(data.id), {:game_state_changed, state, data})
     :keep_state_and_data
   end
 
