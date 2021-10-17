@@ -18,7 +18,8 @@ defmodule Leafblower.Application do
       LeafblowerWeb.Endpoint,
       # Game
       Leafblower.ProcessRegistry,
-      Leafblower.GameCache
+      Leafblower.GameCache,
+      Leafblower.ETSKv
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

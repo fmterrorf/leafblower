@@ -77,10 +77,10 @@ defmodule Leafblower.GameStatem do
         %{players: players} = data
       ) do
     data =
-      %{data | players: Map.put(players, player_id, true)}
+      %{data | players: Map.put(players, player_id, Leafblower.ETSKv.get(player_id))}
       |> maybe_assign_leader()
 
-    {:keep_state, data, [{:reply, from, :ok}]}
+    {:keep_state, data, [{:reply, from, :ok}, {:next_event, :internal, :broadcast}]}
   end
 
   @impl true

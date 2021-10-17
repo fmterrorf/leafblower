@@ -1,6 +1,6 @@
 defmodule LeafblowerWeb.GameLive do
   use LeafblowerWeb, :live_view
-  alias Leafblower.{GameStatem, GameCache}
+  alias Leafblower.{GameStatem, GameCache, ETSKv}
 
   @type assigns :: %{
           game: pid(),
@@ -61,8 +61,8 @@ defmodule LeafblowerWeb.GameLive do
   def render(assigns) do
     ~H"""
     <ul>
-    <%= for {id, player} <- @game_data.players do %>
-      <li><%= id %></li>
+    <%= for {_id, player} <- @game_data.players do %>
+      <li><%= player.name %></li>
     <% end %>
     </ul>
     """
