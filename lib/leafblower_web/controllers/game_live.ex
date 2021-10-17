@@ -60,7 +60,11 @@ defmodule LeafblowerWeb.GameLive do
 
   def render(assigns) do
     ~H"""
-    Loading
+    <ul>
+    <%= for {id, player} <- @game_data.players do %>
+      <li><%= id %></li>
+    <% end %>
+    </ul>
     """
   end
 end

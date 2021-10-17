@@ -121,19 +121,7 @@ defmodule Leafblower.GameStatem do
   @impl true
   def handle_event(
         :info,
-        {:timer_tick, :round_started_waiting_for_response, duration},
-        :round_started_waiting_for_response,
-        _data
-      )
-      when duration > 0 do
-    #  Publish duration to Phoenix Pubsub
-    :keep_state_and_data
-  end
-
-  @impl true
-  def handle_event(
-        :info,
-        {:timer_tick, :round_started_waiting_for_response, _duration},
+        {:timer_end, :round_started_waiting_for_response},
         :round_started_waiting_for_response,
         data
       ) do
@@ -163,7 +151,12 @@ defmodule Leafblower.GameStatem do
   end
 
   def handle_event(:internal, :broadcast, state, data) do
-    :ok = Phoenix.PubSub.broadcast(Leafblower.PubSub, topic(data.id), {:game_state_changed, state, data})
+    Phoenix.PubSub.broadcast(
+      Leafblower.PubSub,
+      topic(data.id),
+      {:game_state_changed, state, data}
+    )
+
     :keep_state_and_data
   end
 

@@ -1,6 +1,6 @@
 defmodule Leafblower.GameTicker do
   use GenServer
-  alias Leafblower.{GameTicker, ProcessRegistry}
+  alias Leafblower.{GameTicker}
 
   defstruct [:id, :from, :timer_ref, :countdown_left, :action_meta]
 
@@ -9,17 +9,12 @@ defmodule Leafblower.GameTicker do
     GenServer.start_link(__MODULE__, arg, name: via_tuple(id))
   end
 
-  def start_tick(ticker, caller, action_meta, duration_in_seconds) do
-    GenServer.cast(ticker, {:start_tick, caller, action_meta, duration_in_seconds})
-  end
+  def start_tick(ticker, caller, action_meta, duration_in_seconds),
+    do: GenServer.cast(ticker, {:start_tick, caller, action_meta, duration_in_seconds})
 
-  def stop_tick(ticker, action_meta) do
-    GenServer.cast(ticker, {:stop_tick, action_meta})
-  end
-
-  def via_tuple(id) do
-    ProcessRegistry.via_tuple({__MODULE__, id})
-  end
+  def stop_tick(ticker, action_meta), do: GenServer.cast(ticker, {:stop_tick, action_meta})
+  def subscribe(id), do: Phoenix.PubSub.subscribe(Leafblower.PubSub, topic(id))
+  def via_tuple(id), do: Leafblower.ProcessRegistry.via_tuple({__MODULE__, id})
 
   @impl true
   def init(init_arg) do
@@ -62,19 +57,25 @@ defmodule Leafblower.GameTicker do
   end
 
   @impl true
-  def handle_info(:tick, %GameTicker{} = state) when state.countdown_left > 0 do
+  def handle_info(:tick, %GameTicker{id: id} = state) when state.countdown_left > 0 do
     timer_ref = Process.send_after(self(), :tick, :timer.seconds(1))
     state = %GameTicker{state | countdown_left: state.countdown_left - 1, timer_ref: timer_ref}
-    send_tick(state)
+
+    Phoenix.PubSub.broadcast(
+      Leafblower.PubSub,
+      topic(id),
+      {:ticker_ticked, state.countdown_left}
+    )
+
     {:noreply, state}
   end
 
   @impl true
-  def handle_info(:tick, %GameTicker{} = state) do
-    {:noreply, %GameTicker{state | countdown_left: 0, timer_ref: nil}}
+  def handle_info(:tick, %GameTicker{from: from} = state) do
+    state = %GameTicker{state | countdown_left: 0, timer_ref: nil}
+    send(from, {:timer_end, state.action_meta})
+    {:noreply, state}
   end
 
-  defp send_tick(%GameTicker{countdown_left: countdown_left, from: from, action_meta: action_meta}) do
-    send(from, {:timer_tick, action_meta, countdown_left})
-  end
+  defp topic(id), do: "#{__MODULE__}/#{id}"
 end
