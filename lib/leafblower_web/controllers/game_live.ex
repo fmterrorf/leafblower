@@ -50,6 +50,14 @@ defmodule LeafblowerWeb.GameLive do
   end
 
   @impl true
+  def handle_event("start_game", _value, socket) do
+    %{game: game, user_id: user_id} = socket.assigns
+    :ok = GameStatem.start_round(game, user_id)
+    IO.inspect("HELLO")
+    {:noreply, socket}
+  end
+
+  @impl true
   @spec render(assigns()) :: Phoenix.LiveView.Rendered.t()
 
   def render(%{joined_in_game?: false} = assigns) do
@@ -61,8 +69,15 @@ defmodule LeafblowerWeb.GameLive do
   def render(assigns) do
     ~H"""
     <ul>
-    <%= for {_id, player} <- @game_data.players do %>
-      <li><%= player.name %></li>
+
+    <%= if @game_data.leader_player_id == @user_id do %>
+      <button {[disabled: map_size(@game_data.players) < @game_data.min_player_count]} phx-click="start_game">
+        Start Game
+      </button>
+    <% end %>
+
+    <%= for {id, player} <- @game_data.players do %>
+      <li id={id}><%= player.name %></li>
     <% end %>
     </ul>
     """
