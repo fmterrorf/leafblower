@@ -45,7 +45,16 @@ defmodule Leafblower.GameTicker do
   end
 
   @impl true
-  def handle_cast({:stop_tick, action_meta}, %{action_meta: action_meta} = state) do
+  def handle_cast(
+        {:stop_tick, action_meta},
+        %GameTicker{action_meta: action_meta, id: id} = state
+      ) do
+    Phoenix.PubSub.broadcast(
+      Leafblower.PubSub,
+      topic(id),
+      {:ticker_ticked, 0}
+    )
+
     {:noreply,
      %GameTicker{
        state

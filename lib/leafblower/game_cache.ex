@@ -11,7 +11,7 @@ defmodule Leafblower.GameCache do
     ticker =
       DynamicSupervisor.start_child(
         __MODULE__,
-        {GameTicker, arg}
+        {GameTicker, [id: Keyword.fetch!(arg, :id)]}
       )
       |> get_pid()
 

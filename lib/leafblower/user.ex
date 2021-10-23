@@ -32,12 +32,10 @@ defmodule Leafblower.User do
     frost voice paper frog smoke star hamster
   )
 
-    def generate(max_id \\ 9999) do
+    def generate() do
       adjective = @adjectives |> Enum.random()
       noun = @nouns |> Enum.random()
-      id = :rand.uniform(max_id)
-
-      [adjective, noun, id] |> Enum.join("-")
+      [adjective, noun] |> Enum.join("-")
     end
   end
 

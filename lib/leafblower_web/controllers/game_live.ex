@@ -1,13 +1,14 @@
 defmodule LeafblowerWeb.GameLive do
   use LeafblowerWeb, :live_view
-  alias Leafblower.{GameStatem, GameCache, ETSKv}
+  alias Leafblower.{GameStatem, GameCache, GameTicker}
 
   @type assigns :: %{
           game: pid(),
           game_state: GameStatem.state() | nil,
           game_data: GameStatem.data() | nil,
           user_id: binary(),
-          joined_in_game?: boolean()
+          joined_in_game?: boolean(),
+          countdown_left: non_neg_integer() | nil
         }
 
   @impl true
@@ -18,7 +19,11 @@ defmodule LeafblowerWeb.GameLive do
 
   def do_mount(game, _params, %{"current_user_id" => user_id}, socket) when game != nil do
     {state, data} = GameStatem.get_state(game)
-    if connected?(socket), do: GameStatem.subscribe(data.id)
+
+    if connected?(socket) do
+      GameStatem.subscribe(data.id)
+      GameTicker.subscribe(data.id)
+    end
 
     {:ok,
      assign(socket,
@@ -26,6 +31,7 @@ defmodule LeafblowerWeb.GameLive do
        game_state: state,
        game_data: data,
        user_id: user_id,
+       countdown_left: nil,
        joined_in_game?: Map.has_key?(data.players, user_id)
      )}
   end
@@ -42,6 +48,10 @@ defmodule LeafblowerWeb.GameLive do
     {:noreply, assign(socket, game_state: state, game_data: data)}
   end
 
+  def handle_info({:ticker_ticked, countdown_left}, socket) do
+    {:noreply, assign(socket, countdown_left: countdown_left)}
+  end
+
   @impl true
   def handle_event("join_game", _value, socket) do
     %{game: game, user_id: user_id} = socket.assigns
@@ -53,7 +63,6 @@ defmodule LeafblowerWeb.GameLive do
   def handle_event("start_game", _value, socket) do
     %{game: game, user_id: user_id} = socket.assigns
     :ok = GameStatem.start_round(game, user_id)
-    IO.inspect("HELLO")
     {:noreply, socket}
   end
 
@@ -68,17 +77,22 @@ defmodule LeafblowerWeb.GameLive do
 
   def render(assigns) do
     ~H"""
-    <ul>
-
-    <%= if @game_data.leader_player_id == @user_id do %>
+    <%= if @game_data.leader_player_id == @user_id and @game_state in [:waiting_for_players, :round_ended] do %>
       <button {[disabled: map_size(@game_data.players) < @game_data.min_player_count]} phx-click="start_game">
         Start Game
       </button>
     <% end %>
 
-    <%= for {id, player} <- @game_data.players do %>
-      <li id={id}><%= player.name %></li>
+    <div><%= Atom.to_string(@game_state) %></div>
+
+    <%= if @countdown_left != nil and @game_state == :round_started_waiting_for_response do %>
+      <div>Countdown: <%= @countdown_left %></div>
     <% end %>
+
+    <ul>
+      <%= for {id, player} <- @game_data.players do %>
+        <li id={id}><%= player.name %></li>
+      <% end %>
     </ul>
     """
   end

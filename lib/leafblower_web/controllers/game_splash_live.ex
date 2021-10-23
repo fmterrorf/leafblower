@@ -9,7 +9,7 @@ defmodule LeafblowerWeb.GameSplashLive do
     id = Ecto.UUID.generate()
 
     :ok =
-      [id: id]
+      [id: id, countdown_duration: 60, min_player_count: 1]
       |> Leafblower.GameCache.new_game()
       |> Leafblower.GameStatem.join_player(socket.assigns.user_id)
 
