@@ -4,19 +4,16 @@ defmodule Leafblower.GameStatem do
 
   @type state :: :waiting_for_players | :round_started_waiting_for_response | :round_ended
 
-  @typedoc """
-  Map of user id & answers
-  """
-  @type user_answers :: %{binary() => any()}
-
   @type data :: %{
           id: binary(),
           players: %{},
           round_number: non_neg_integer(),
-          round_player_answers: map(),
+          round_player_answers: %{binary() => any()},
           leader_player_id: binary() | nil,
           min_player_count: non_neg_integer(),
           countdown_duration: non_neg_integer(),
+          player_score: %{binary() => non_neg_integer()},
+          # Can be a Registry via tuple or pid
           ticker: any()
         }
 
@@ -40,6 +37,7 @@ defmodule Leafblower.GameStatem do
         leader_player_id: leader_player_id,
         min_player_count: min_player_count,
         countdown_duration: countdown_duration,
+        player_score: %{},
         ticker: ticker
       },
       name: via_tuple(id)
@@ -74,10 +72,14 @@ defmodule Leafblower.GameStatem do
         {:call, from},
         {:join_player, player_id},
         :waiting_for_players,
-        %{players: players} = data
+        %{players: players, player_score: player_score} = data
       ) do
     data =
-      %{data | players: Map.put(players, player_id, Leafblower.ETSKv.get(player_id))}
+      %{
+        data
+        | players: Map.put(players, player_id, Leafblower.ETSKv.get(player_id)),
+          player_score: Map.put(player_score, player_id, 0)
+      }
       |> maybe_assign_leader()
 
     {:keep_state, data, [{:reply, from, :ok}, {:next_event, :internal, :broadcast}]}
@@ -106,49 +108,28 @@ defmodule Leafblower.GameStatem do
   def handle_event(
         :cast,
         {:submit_answer, player_id, answer},
-        :round_started_waiting_for_response,
+        :round_started_waiting_for_response = state,
         %{players: players, round_player_answers: round_player_answers} = data
       )
       when map_size(round_player_answers) < map_size(players) do
     data = %{data | round_player_answers: Map.put(round_player_answers, player_id, answer)}
 
-    {:keep_state, data,
-     [{:next_event, :internal, :check_answer}, {:next_event, :internal, :broadcast}]}
+    if map_size(data.players) == map_size(data.round_player_answers) do
+      GameTicker.stop_tick(data.ticker, state)
+      {:next_state, state, data, [{:next_event, :internal, :broadcast}]}
+    else
+      {:keep_state, data, [{:next_event, :internal, :broadcast}]}
+    end
   end
 
   # info
 
   @impl true
-  def handle_event(
-        :info,
-        {:timer_end, :round_started_waiting_for_response},
-        :round_started_waiting_for_response,
-        data
-      ) do
+  def handle_event(:info, {:timer_end, :round_started_waiting_for_response = state}, state, data) do
     {:next_state, :round_ended, data, {:next_event, :internal, :broadcast}}
   end
 
   # internal
-
-  def handle_event(
-        :internal,
-        :check_answer,
-        :round_started_waiting_for_response,
-        %{players: players, round_player_answers: round_player_answers} = data
-      )
-      when map_size(players) == map_size(round_player_answers) do
-    cancel_timer(data, :round_started_waiting_for_response)
-    {:next_state, :round_ended, data, {:next_event, :internal, :broadcast}}
-  end
-
-  def handle_event(
-        :internal,
-        :check_answer,
-        :round_started_waiting_for_response,
-        _data
-      ) do
-    :keep_state_and_data
-  end
 
   def handle_event(:internal, :broadcast, state, data) do
     Phoenix.PubSub.broadcast(
@@ -167,10 +148,6 @@ defmodule Leafblower.GameStatem do
       action_meta,
       data.countdown_duration
     )
-  end
-
-  defp cancel_timer(data, action_meta) do
-    GameTicker.stop_tick(data.ticker, action_meta)
   end
 
   defp maybe_assign_leader(%{players: players} = data) do

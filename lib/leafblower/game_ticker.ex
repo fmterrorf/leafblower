@@ -32,6 +32,14 @@ defmodule Leafblower.GameTicker do
 
   @impl true
   def handle_cast({:start_tick, from, action_meta, duration_in_seconds}, state) do
+    IO.inspect(action_meta, label: "action_meta")
+
+    Phoenix.PubSub.broadcast(
+      Leafblower.PubSub,
+      topic(state.id),
+      {:ticker_ticked, duration_in_seconds}
+    )
+
     timer_ref = Process.send_after(self(), :tick, :timer.seconds(1))
 
     {:noreply,
@@ -47,13 +55,15 @@ defmodule Leafblower.GameTicker do
   @impl true
   def handle_cast(
         {:stop_tick, action_meta},
-        %GameTicker{action_meta: action_meta, id: id} = state
+        %GameTicker{action_meta: action_meta, id: id, timer_ref: timer_ref} = state
       ) do
     Phoenix.PubSub.broadcast(
       Leafblower.PubSub,
       topic(id),
       {:ticker_ticked, 0}
     )
+
+    Process.cancel_timer(timer_ref)
 
     {:noreply,
      %GameTicker{
@@ -79,7 +89,6 @@ defmodule Leafblower.GameTicker do
     {:noreply, state}
   end
 
-  @impl true
   def handle_info(:tick, %GameTicker{from: from} = state) do
     state = %GameTicker{state | countdown_left: 0, timer_ref: nil}
     send(from, {:timer_end, state.action_meta})

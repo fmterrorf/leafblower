@@ -8,7 +8,8 @@ defmodule LeafblowerWeb.GameLive do
           game_data: GameStatem.data() | nil,
           user_id: binary(),
           joined_in_game?: boolean(),
-          countdown_left: non_neg_integer() | nil
+          countdown_left: non_neg_integer() | nil,
+          is_leader?: boolean()
         }
 
   @impl true
@@ -32,7 +33,8 @@ defmodule LeafblowerWeb.GameLive do
        game_data: data,
        user_id: user_id,
        countdown_left: nil,
-       joined_in_game?: Map.has_key?(data.players, user_id)
+       joined_in_game?: Map.has_key?(data.players, user_id),
+       is_leader?: data.leader_player_id == user_id
      )}
   end
 
@@ -45,6 +47,12 @@ defmodule LeafblowerWeb.GameLive do
 
   @impl true
   def handle_info({:game_state_changed, state, data}, socket) do
+    socket =
+      case state do
+        :round_ended -> assign(socket, countdown_left: nil)
+        _ -> socket
+      end
+
     {:noreply, assign(socket, game_state: state, game_data: data)}
   end
 
@@ -59,11 +67,67 @@ defmodule LeafblowerWeb.GameLive do
     {:noreply, assign(socket, joined_in_game?: true)}
   end
 
-  @impl true
-  def handle_event("start_game", _value, socket) do
+  def handle_event("start_round", _value, socket) do
     %{game: game, user_id: user_id} = socket.assigns
     :ok = GameStatem.start_round(game, user_id)
     {:noreply, socket}
+  end
+
+  def handle_event("submit_answer", value, socket) do
+    %{game: game, user_id: user_id} = socket.assigns
+    GameStatem.submit_answer(game, user_id, value)
+    {:noreply, socket}
+  end
+
+  def render_waiting_for_players(players, min_player_count, is_leader?) do
+    assigns = %{
+      disabled: map_size(players) < min_player_count,
+      is_leader?: is_leader?,
+      players: players
+    }
+
+    ~H"""
+    <%= if @is_leader? do%>
+      <button phx-click="start_round" {[disabled: @disabled]}>Start Game</button>
+    <% end %>
+
+    <ul>
+      <%= for {id, player} <- @players do %>
+        <li id={id}><%= player.name %></li>
+      <% end %>
+    </ul>
+    """
+  end
+
+  def render_round_started_waiting_for_response(players, round_player_answers) do
+    assigns = %{players: players, round_player_answers: round_player_answers}
+
+    ~H"""
+    <h3>Choices</h3>
+    <hr />
+    <ul>
+      <li id="answer-a"><button phx-click="submit_answer" phx-value="a">a</button></li>
+      <li id="answer-b"><button phx-click="submit_answer" phx-value="b">b</button></li>
+      <li id="answer-c"><button phx-click="submit_answer" phx-value="c">c</button></li>
+      <li id="answer-d"><button phx-click="submit_answer" phx-value="d">d</button></li>
+    </ul>
+
+    <h3>Answers</h3>
+    <hr />
+    <ul>
+      <%= for {user_id, _answer} <- @round_player_answers do %>
+        <li id={user_id}><%= @players[user_id].name %></li>
+      <% end %>
+    </ul>
+    """
+  end
+
+  def render_round_ended() do
+    assigns = %{}
+
+    ~H"""
+    <button>Round ended</button>
+    """
   end
 
   @impl true
@@ -77,23 +141,23 @@ defmodule LeafblowerWeb.GameLive do
 
   def render(assigns) do
     ~H"""
-    <%= if @game_data.leader_player_id == @user_id and @game_state in [:waiting_for_players, :round_ended] do %>
-      <button {[disabled: map_size(@game_data.players) < @game_data.min_player_count]} phx-click="start_game">
-        Start Game
-      </button>
+    <pre><%= Atom.to_string(@game_state) %></pre>
+
+    <%= if @countdown_left != nil do %>
+      <pre>Countdown: <%= @countdown_left %></pre>
     <% end %>
 
-    <div><%= Atom.to_string(@game_state) %></div>
-
-    <%= if @countdown_left != nil and @game_state == :round_started_waiting_for_response do %>
-      <div>Countdown: <%= @countdown_left %></div>
-    <% end %>
-
-    <ul>
-      <%= for {id, player} <- @game_data.players do %>
-        <li id={id}><%= player.name %></li>
-      <% end %>
-    </ul>
+    <%= case @game_state do
+      :waiting_for_players -> render_waiting_for_players(
+        @game_data.players,
+        @game_data.min_player_count,
+        @is_leader?)
+      :round_started_waiting_for_response -> render_round_started_waiting_for_response(
+        @game_data.players,
+        @game_data.round_player_answers)
+      :round_ended -> render_round_ended()
+      _ -> ""
+    end %>
     """
   end
 end
