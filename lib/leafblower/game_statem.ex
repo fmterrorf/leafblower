@@ -116,7 +116,7 @@ defmodule Leafblower.GameStatem do
 
     if map_size(data.players) == map_size(data.round_player_answers) do
       GameTicker.stop_tick(data.ticker, state)
-      {:next_state, state, data, [{:next_event, :internal, :broadcast}]}
+      {:next_state, :round_ended, data, [{:next_event, :internal, :broadcast}]}
     else
       {:keep_state, data, [{:next_event, :internal, :broadcast}]}
     end
