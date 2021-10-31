@@ -2,11 +2,13 @@ defmodule Leafblower.GameStatem do
   use GenStateMachine
   alias Leafblower.{GameTicker, ProcessRegistry}
 
-  @type state :: :waiting_for_players | :round_started_waiting_for_response | :round_ended
+  @type status :: :waiting_for_players | :round_started_waiting_for_response | :round_ended
 
   @type data :: %{
           id: binary(),
           players: %{},
+          player_ids: list(binary()),
+          player_id_idx: non_neg_integer(),
           round_number: non_neg_integer(),
           round_player_answers: %{binary() => any()},
           leader_player_id: binary() | nil,
@@ -32,6 +34,8 @@ defmodule Leafblower.GameStatem do
       %{
         id: id,
         players: players,
+        player_ids: Map.keys(players),
+        player_id_idx: 0,
         round_number: round_number,
         round_player_answers: round_player_answers,
         leader_player_id: leader_player_id,
@@ -53,18 +57,18 @@ defmodule Leafblower.GameStatem do
   def subscribe(id), do: Phoenix.PubSub.subscribe(Leafblower.PubSub, topic(id))
   def via_tuple(name), do: ProcessRegistry.via_tuple({__MODULE__, name})
 
-  @spec get_state(any()) :: {state(), data()}
+  @spec get_state(any()) :: {status(), data()}
   def get_state(game), do: GenStateMachine.call(game, :get_state)
 
   @impl true
-  @spec init(keyword) :: {:ok, state(), data()}
+  @spec init(keyword) :: {:ok, status(), data()}
   def init(init_arg) do
     {:ok, :waiting_for_players, init_arg}
   end
 
   @impl true
-  def handle_event({:call, from}, :get_state, state, data) do
-    {:keep_state_and_data, [{:reply, from, {state, data}}]}
+  def handle_event({:call, from}, :get_state, status, data) do
+    {:keep_state_and_data, [{:reply, from, {status, data}}]}
   end
 
   @impl true
@@ -72,12 +76,13 @@ defmodule Leafblower.GameStatem do
         {:call, from},
         {:join_player, player_id},
         :waiting_for_players,
-        %{players: players, player_score: player_score} = data
+        %{players: players, player_ids: player_ids, player_score: player_score} = data
       ) do
     data =
       %{
         data
         | players: Map.put(players, player_id, Leafblower.ETSKv.get(player_id)),
+          player_ids: [player_id | player_ids],
           player_score: Map.put(player_score, player_id, 0)
       }
       |> maybe_assign_leader()
@@ -89,14 +94,15 @@ defmodule Leafblower.GameStatem do
   def handle_event(
         {:call, from},
         {:start_round, player_id},
-        state,
+        status,
         %{
           players: players,
           leader_player_id: player_id,
           min_player_count: min_player_count
         } = data
       )
-      when map_size(players) >= min_player_count and state in [:waiting_for_players, :round_ended] do
+      when map_size(players) >= min_player_count and
+             status in [:waiting_for_players, :round_ended] do
     start_timer(data, :round_started_waiting_for_response)
     data = %{data | round_number: data.round_number + 1, round_player_answers: %{}}
 
@@ -108,14 +114,14 @@ defmodule Leafblower.GameStatem do
   def handle_event(
         :cast,
         {:submit_answer, player_id, answer},
-        :round_started_waiting_for_response = state,
+        :round_started_waiting_for_response = status,
         %{players: players, round_player_answers: round_player_answers} = data
       )
       when map_size(round_player_answers) < map_size(players) do
     data = %{data | round_player_answers: Map.put(round_player_answers, player_id, answer)}
 
     if map_size(data.players) == map_size(data.round_player_answers) do
-      GameTicker.stop_tick(data.ticker, state)
+      GameTicker.stop_tick(data.ticker, status)
       {:next_state, :round_ended, data, [{:next_event, :internal, :broadcast}]}
     else
       {:keep_state, data, [{:next_event, :internal, :broadcast}]}
@@ -125,17 +131,22 @@ defmodule Leafblower.GameStatem do
   # info
 
   @impl true
-  def handle_event(:info, {:timer_end, :round_started_waiting_for_response = state}, state, data) do
+  def handle_event(
+        :info,
+        {:timer_end, :round_started_waiting_for_response = status},
+        status,
+        data
+      ) do
     {:next_state, :round_ended, data, {:next_event, :internal, :broadcast}}
   end
 
   # internal
 
-  def handle_event(:internal, :broadcast, state, data) do
+  def handle_event(:internal, :broadcast, status, data) do
     Phoenix.PubSub.broadcast(
       Leafblower.PubSub,
       topic(data.id),
-      {:game_state_changed, state, data}
+      {:game_state_changed, status, data}
     )
 
     :keep_state_and_data

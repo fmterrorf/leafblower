@@ -4,7 +4,7 @@ defmodule LeafblowerWeb.GameLive do
 
   @type assigns :: %{
           game: pid(),
-          game_state: GameStatem.state() | nil,
+          game_status: GameStatem.state() | nil,
           game_data: GameStatem.data() | nil,
           user_id: binary(),
           joined_in_game?: boolean(),
@@ -19,7 +19,7 @@ defmodule LeafblowerWeb.GameLive do
   end
 
   def do_mount(game, _params, %{"current_user_id" => user_id}, socket) when game != nil do
-    {state, data} = GameStatem.get_state(game)
+    {status, data} = GameStatem.get_state(game)
 
     if connected?(socket) do
       GameStatem.subscribe(data.id)
@@ -29,7 +29,7 @@ defmodule LeafblowerWeb.GameLive do
     {:ok,
      assign(socket,
        game: game,
-       game_state: state,
+       game_status: status,
        game_data: data,
        user_id: user_id,
        countdown_left: nil,
@@ -53,7 +53,7 @@ defmodule LeafblowerWeb.GameLive do
         _ -> socket
       end
 
-    {:noreply, assign(socket, game_state: state, game_data: data)}
+    {:noreply, assign(socket, game_status: state, game_data: data)}
   end
 
   def handle_info({:ticker_ticked, countdown_left}, socket) do
@@ -158,7 +158,7 @@ defmodule LeafblowerWeb.GameLive do
 
   def render(%{joined_in_game?: false} = assigns) do
     ~H"""
-    <%= if @game_state == :waiting_for_players do %>
+    <%= if @game_status == :waiting_for_players do %>
       <button phx-click="join_game">Join Game</button>
     <% else %>
       <h3>Game has started<h3>
@@ -168,9 +168,9 @@ defmodule LeafblowerWeb.GameLive do
 
   def render(assigns) do
     ~H"""
-    <pre><%= Atom.to_string(@game_state) %></pre>
+    <pre><%= Atom.to_string(@game_status) %></pre>
 
-    <%= case @game_state do
+    <%= case @game_status do
       :waiting_for_players -> render_waiting_for_players(
         @game_data.players,
         @game_data.min_player_count,

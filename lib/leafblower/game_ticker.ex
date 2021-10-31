@@ -32,8 +32,6 @@ defmodule Leafblower.GameTicker do
 
   @impl true
   def handle_cast({:start_tick, from, action_meta, duration_in_seconds}, state) do
-    IO.inspect(action_meta, label: "action_meta")
-
     Phoenix.PubSub.broadcast(
       Leafblower.PubSub,
       topic(state.id),
