@@ -8,16 +8,14 @@ defmodule Leafblower.GameCache do
 
   def new_game(arg) do
     # Maybe consider storing the pids into ETS so that we can look it up later
-    ticker =
-      DynamicSupervisor.start_child(
-        __MODULE__,
-        {GameTicker, [id: Keyword.fetch!(arg, :id)]}
-      )
-      |> get_pid()
+    DynamicSupervisor.start_child(
+      __MODULE__,
+      {GameTicker, [id: Keyword.fetch!(arg, :id)]}
+    )
 
     DynamicSupervisor.start_child(
       __MODULE__,
-      {GameStatem, arg ++ [ticker: ticker]}
+      {GameStatem, arg}
     )
     |> get_pid()
   end

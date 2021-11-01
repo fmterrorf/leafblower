@@ -18,9 +18,8 @@ defmodule LeafblowerWeb.Router do
   scope "/", LeafblowerWeb do
     pipe_through :browser
 
-    get "/", PageController, :index
-    live "/game/splash", GameSplashLive
-    live "/game/:id", GameLive
+    live "/", GameSplashLive
+    live "/:id", GameLive
   end
 
   # Other scopes may use custom stacks.

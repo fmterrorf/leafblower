@@ -117,16 +117,12 @@ defmodule LeafblowerWeb.GameLive do
       <pre>Countdown: <%= @countdown_left %></pre>
     <% end %>
 
-    <h3>Choices</h3>
-    <hr />
     <ul>
       <li id="answer-a"><button {[disabled: @disabled]} phx-click="submit_answer" phx-value-id="a">a</button></li>
       <li id="answer-b"><button {[disabled: @disabled]} phx-click="submit_answer" phx-value-id="b">b</button></li>
       <li id="answer-c"><button {[disabled: @disabled]} phx-click="submit_answer" phx-value-id="c">c</button></li>
       <li id="answer-d"><button {[disabled: @disabled]} phx-click="submit_answer" phx-value-id="d">d</button></li>
     </ul>
-
-    <h3>Answers</h3>
     <hr />
     <ul>
       <%= for {id, player} <- @players do %>
@@ -145,8 +141,17 @@ defmodule LeafblowerWeb.GameLive do
 
     ~H"""
     <%= if @is_leader? do%>
-      <button phx-click="start_round">Next round</button>
-    <% end %>
+    <ul>
+      <h3>Pick a winner</h3>
+      <%= for {id, player} <- @players do %>
+        <%= if Map.has_key?(@round_player_answers, id) do %>
+          <li><button phx-click="start_round" id={id}><%= "#{player.name} #{@round_player_answers[id]}" %></button></li>
+        <% else %>
+          <li><button phx-click="start_round" id={id}><%= player.name %> No answer</button></li>
+        <% end %>
+      <% end %>
+    </ul>
+    <% else %>
     <ul>
       <%= for {id, player} <- @players do %>
         <%= if Map.has_key?(@round_player_answers, id) do %>
@@ -156,6 +161,8 @@ defmodule LeafblowerWeb.GameLive do
         <% end %>
       <% end %>
     </ul>
+    <% end %>
+
     """
   end
 
