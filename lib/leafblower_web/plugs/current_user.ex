@@ -5,13 +5,16 @@ defmodule LeafblowerWeb.Plugs.Currentuser do
 
   def call(%Plug.Conn{} = conn, _default) do
     if current_user_id = get_user_id(conn) do
-      assign(conn, :current_user_id, current_user_id)
+      conn
+      |> assign(:current_user_id, current_user_id)
+      |> assign(:current_user, Leafblower.ETSKv.get(current_user_id))
     else
       user = Leafblower.User.new()
 
       conn
       |> put_session(:current_user_id, user.id)
       |> assign(:current_user_id, user.id)
+      |> assign(:current_user, user)
     end
   end
 
@@ -21,7 +24,7 @@ defmodule LeafblowerWeb.Plugs.Currentuser do
         nil
 
       current_user_id ->
-        if Leafblower.ETSKv.get(current_user_id) do
+        if Leafblower.User.get(current_user_id) do
           current_user_id
         else
           nil

@@ -99,11 +99,17 @@ defmodule LeafblowerWeb.GameLive do
     """
   end
 
-  def render_round_started_waiting_for_response(players, round_player_answers, countdown_left) do
+  def render_round_started_waiting_for_response(
+        player_id,
+        players,
+        round_player_answers,
+        countdown_left
+      ) do
     assigns = %{
       players: players,
       round_player_answers: round_player_answers,
-      countdown_left: countdown_left
+      countdown_left: countdown_left,
+      disabled: Map.has_key?(round_player_answers, player_id)
     }
 
     ~H"""
@@ -114,10 +120,10 @@ defmodule LeafblowerWeb.GameLive do
     <h3>Choices</h3>
     <hr />
     <ul>
-      <li id="answer-a"><button phx-click="submit_answer" phx-value-id="a">a</button></li>
-      <li id="answer-b"><button phx-click="submit_answer" phx-value-id="b">b</button></li>
-      <li id="answer-c"><button phx-click="submit_answer" phx-value-id="c">c</button></li>
-      <li id="answer-d"><button phx-click="submit_answer" phx-value-id="d">d</button></li>
+      <li id="answer-a"><button {[disabled: @disabled]} phx-click="submit_answer" phx-value-id="a">a</button></li>
+      <li id="answer-b"><button {[disabled: @disabled]} phx-click="submit_answer" phx-value-id="b">b</button></li>
+      <li id="answer-c"><button {[disabled: @disabled]} phx-click="submit_answer" phx-value-id="c">c</button></li>
+      <li id="answer-d"><button {[disabled: @disabled]} phx-click="submit_answer" phx-value-id="d">d</button></li>
     </ul>
 
     <h3>Answers</h3>
@@ -176,6 +182,7 @@ defmodule LeafblowerWeb.GameLive do
         @game_data.min_player_count,
         @is_leader?)
       :round_started_waiting_for_response -> render_round_started_waiting_for_response(
+        @user_id,
         @game_data.players,
         @game_data.round_player_answers,
         @countdown_left)

@@ -49,4 +49,8 @@ defmodule Leafblower.User do
     Leafblower.ETSKv.put(user.id, user)
     user
   end
+
+  def get(id) do
+    Leafblower.ETSKv.get(id)
+  end
 end
