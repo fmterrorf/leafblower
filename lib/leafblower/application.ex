@@ -7,7 +7,13 @@ defmodule Leafblower.Application do
 
   @impl true
   def start(_type, _args) do
+    topologies = Application.get_env(:libcluster, :topologies) || []
+
     children = [
+      {Cluster.Supervisor, [topologies, [name: Leafblower.ClusterSupervisor]]},
+      Leafblower.ProcessRegistry,
+      Leafblower.GameCache,
+      Leafblower.ETSKv,
       # Start the Ecto repository
       # Leafblower.Repo,
       # Start the Telemetry supervisor
@@ -15,11 +21,7 @@ defmodule Leafblower.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: Leafblower.PubSub},
       # Start the Endpoint (http/https)
-      LeafblowerWeb.Endpoint,
-      # Game
-      Leafblower.ProcessRegistry,
-      Leafblower.GameCache,
-      Leafblower.ETSKv
+      LeafblowerWeb.Endpoint
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

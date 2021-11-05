@@ -49,7 +49,8 @@ defmodule Leafblower.MixProject do
       {:gettext, "~> 0.18"},
       {:jason, "~> 1.2"},
       {:plug_cowboy, "~> 2.5"},
-      {:gen_state_machine, "~> 3.0"}
+      {:gen_state_machine, "~> 3.0"},
+      {:libcluster, "~> 3.3"}
     ]
   end
 
