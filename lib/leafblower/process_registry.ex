@@ -1,21 +1,19 @@
 defmodule Leafblower.ProcessRegistry do
-  def start_link do
-    Registry.start_link(keys: :unique, name: __MODULE__)
+  use Horde.Registry
+
+  def start_link(_) do
+    Horde.Registry.start_link(__MODULE__, [keys: :unique], name: __MODULE__)
   end
 
   def via_tuple(key) do
-    {:via, Registry, {__MODULE__, key}}
+    {:via, Horde.Registry, {__MODULE__, key}}
   end
 
   def lookup(key) do
-    Registry.lookup(__MODULE__, key)
+    Horde.Registry.lookup(__MODULE__, key)
   end
 
-  def child_spec(_) do
-    Supervisor.child_spec(
-      Registry,
-      id: __MODULE__,
-      start: {__MODULE__, :start_link, []}
-    )
+  def init(options) do
+   Horde.Registry.init(options)
   end
 end

@@ -8,10 +8,10 @@ defmodule LeafblowerWeb.GameSplashLive do
   def handle_event("new_game", _value, socket) do
     id = Ecto.UUID.generate()
 
-    :ok =
-      [id: id, countdown_duration: 60, min_player_count: 1]
-      |> Leafblower.GameCache.new_game()
-      |> Leafblower.GameStatem.join_player(socket.assigns.user_id)
+    {:ok, game} =
+      Leafblower.GameCache.new_game(id: id, countdown_duration: 60, min_player_count: 1)
+
+    Leafblower.GameStatem.join_player(game, socket.assigns.user_id)
 
     {:noreply,
      socket

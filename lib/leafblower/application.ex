@@ -8,16 +8,14 @@ defmodule Leafblower.Application do
   @impl true
   def start(_type, _args) do
     topologies = Application.get_env(:libcluster, :topologies) || []
-
     children = [
-      {Cluster.Supervisor, [topologies, [name: Leafblower.ClusterSupervisor]]},
-      Leafblower.ProcessRegistry,
-      Leafblower.GameCache,
-      Leafblower.ETSKv,
-      # Start the Ecto repository
-      # Leafblower.Repo,
       # Start the Telemetry supervisor
       LeafblowerWeb.Telemetry,
+      # {Horde.Registry, [name: Leafblower.GameRegistry, keys: :unique, members: :auto]},
+      {Cluster.Supervisor, [topologies, [name: Leafblower.ClusterSupervisor]]},
+      Leafblower.GameCache,
+      Leafblower.ProcessRegistry,
+      Leafblower.ETSKv,
       # Start the PubSub system
       {Phoenix.PubSub, name: Leafblower.PubSub},
       # Start the Endpoint (http/https)

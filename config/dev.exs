@@ -75,7 +75,7 @@ config :phoenix, :plug_init_mode, :runtime
 
 config :libcluster,
   topologies: [
-    local: [
+    leafblower: [
       strategy: Elixir.Cluster.Strategy.Gossip
     ]
   ]
