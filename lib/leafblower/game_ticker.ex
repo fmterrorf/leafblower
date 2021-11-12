@@ -85,8 +85,11 @@ defmodule Leafblower.GameTicker do
   end
 
   def handle_info(:tick, %GameTicker{id: id} = state) do
-    state = %GameTicker{state | countdown_left: 0, timer_ref: nil}
-    send(Leafblower.GameStatem.via_tuple(id), {:timer_end, state.action_meta})
+    state = %GameTicker{state | timer_ref: nil}
+
+    Leafblower.GameCache.find_game(id)
+    |> send({:timer_end, state.action_meta})
+
     {:noreply, state}
   end
 

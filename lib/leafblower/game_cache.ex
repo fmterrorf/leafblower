@@ -9,12 +9,10 @@ defmodule Leafblower.GameCache do
   end
 
   def new_game(arg) do
-    game_id = Keyword.fetch!(arg, :id)
-
     {:ok, _} =
       Horde.DynamicSupervisor.start_child(
         __MODULE__,
-        {GameTicker, [id: game_id]}
+        {GameTicker, Keyword.take(arg, [:id])}
       )
 
     Horde.DynamicSupervisor.start_child(

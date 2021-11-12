@@ -14,10 +14,13 @@ defmodule Leafblower.GameStatem do
           leader_player_id: binary() | nil,
           min_player_count: non_neg_integer(),
           countdown_duration: non_neg_integer(),
-          player_score: %{binary() => non_neg_integer()},
-          # Can be a Registry via tuple or pid
-          ticker: any()
+          player_score: %{binary() => non_neg_integer()}
         }
+
+  def child_spec(init_arg) do
+    id = Keyword.fetch!(init_arg, :id)
+    %{id: "#{__MODULE__}-#{id}", start: {__MODULE__, :start_link, [init_arg]}}
+  end
 
   def start_link(arg) do
     id = Keyword.fetch!(arg, :id)
@@ -27,7 +30,6 @@ defmodule Leafblower.GameStatem do
     min_player_count = Keyword.get(arg, :min_player_count, 3)
     leader_player_id = Keyword.get(arg, :leader_player_id)
     countdown_duration = Keyword.get(arg, :countdown_duration, 0)
-    ticker =  Leafblower.GameTicker.via_tuple(id)
 
     GenStateMachine.start_link(
       __MODULE__,
@@ -41,8 +43,7 @@ defmodule Leafblower.GameStatem do
         leader_player_id: leader_player_id,
         min_player_count: min_player_count,
         countdown_duration: countdown_duration,
-        player_score: %{},
-        ticker: ticker
+        player_score: %{}
       },
       name: via_tuple(id)
     )
@@ -122,7 +123,10 @@ defmodule Leafblower.GameStatem do
     data = %{data | round_player_answers: Map.put(round_player_answers, player_id, answer)}
 
     if map_size(data.players) == map_size(data.round_player_answers) do
-      GameTicker.stop_tick(data.ticker, status)
+      data.id
+      |> GameTicker.via_tuple()
+      |> GameTicker.stop_tick(status)
+
       {:next_state, :round_ended, data, [{:next_event, :internal, :broadcast}]}
     else
       {:keep_state, data, [{:next_event, :internal, :broadcast}]}
@@ -154,11 +158,9 @@ defmodule Leafblower.GameStatem do
   end
 
   defp start_timer(data, action_meta) do
-    GameTicker.start_tick(
-      data.ticker,
-      action_meta,
-      data.countdown_duration
-    )
+    data.id
+    |> GameTicker.via_tuple()
+    |> GameTicker.start_tick(action_meta, data.countdown_duration)
   end
 
   defp maybe_assign_leader(%{players: players} = data) do
