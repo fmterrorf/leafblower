@@ -9,11 +9,12 @@ defmodule Leafblower.GameCache do
   end
 
   def new_game(arg) do
-    # Maybe consider storing the pids into ETS so that we can look it up later
+    game_id = Keyword.fetch!(arg, :id)
+
     {:ok, _} =
       Horde.DynamicSupervisor.start_child(
         __MODULE__,
-        {GameTicker, [id: Keyword.fetch!(arg, :id)]}
+        {GameTicker, [id: game_id]}
       )
 
     Horde.DynamicSupervisor.start_child(

@@ -55,7 +55,7 @@ defmodule Leafblower.GameStatem do
     do: GenStateMachine.cast(game, {:submit_answer, player_id, answer})
 
   def subscribe(id), do: Phoenix.PubSub.subscribe(Leafblower.PubSub, topic(id))
-  def via_tuple(name), do: ProcessRegistry.via_tuple({__MODULE__, name})
+  def via_tuple(id), do: ProcessRegistry.via_tuple({__MODULE__, id})
 
   @spec get_state(any()) :: {status(), data()}
   def get_state(game), do: GenStateMachine.call(game, :get_state)
@@ -156,7 +156,6 @@ defmodule Leafblower.GameStatem do
   defp start_timer(data, action_meta) do
     GameTicker.start_tick(
       data.ticker,
-      self(),
       action_meta,
       data.countdown_duration
     )
