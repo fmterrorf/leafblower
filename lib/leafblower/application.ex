@@ -14,6 +14,7 @@ defmodule Leafblower.Application do
       # {Horde.Registry, [name: Leafblower.GameRegistry, keys: :unique, members: :auto]},
       {Cluster.Supervisor, [topologies, [name: Leafblower.ClusterSupervisor]]},
       Leafblower.GameCache,
+      Leafblower.UserSupervisor,
       Leafblower.ProcessRegistry,
       Leafblower.ETSKv,
       # Start the PubSub system

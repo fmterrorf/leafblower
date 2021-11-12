@@ -2,10 +2,8 @@ defmodule Leafblower.GameCache do
   use Horde.DynamicSupervisor
   alias Leafblower.{GameStatem, GameTicker}
 
-  def start_link(init_arg, options \\ []) do
-    init_arg = Keyword.merge(init_arg, strategy: :one_for_one, members: :auto)
-    options = Keyword.merge(options, name: __MODULE__)
-    Horde.DynamicSupervisor.start_link(__MODULE__, init_arg, options)
+  def start_link(_) do
+    Horde.DynamicSupervisor.start_link(__MODULE__, [], name: __MODULE__)
   end
 
   def new_game(arg) do
@@ -29,7 +27,7 @@ defmodule Leafblower.GameCache do
   end
 
   @impl true
-  def init(init_arg) do
-    Horde.DynamicSupervisor.init(init_arg)
+  def init(_) do
+    Horde.DynamicSupervisor.init(strategy: :one_for_one, members: :auto)
   end
 end

@@ -33,7 +33,7 @@ defmodule LeafblowerWeb.GameLive do
        game_data: data,
        user_id: user_id,
        countdown_left: nil,
-       joined_in_game?: Map.has_key?(data.players, user_id),
+       joined_in_game?: MapSet.member?(data.players, user_id),
        is_leader?: data.leader_player_id == user_id
      )}
   end
@@ -92,8 +92,8 @@ defmodule LeafblowerWeb.GameLive do
     <% end %>
 
     <ul>
-      <%= for {id, player} <- @players do %>
-        <li id={id}><%= player.name %></li>
+      <%= for player <- Enum.map(@players, &Leafblower.UserSupervisor.get_user!/1) do %>
+        <li id={player.id}><%= player.name %></li>
       <% end %>
     </ul>
     """
@@ -125,8 +125,8 @@ defmodule LeafblowerWeb.GameLive do
     </ul>
     <hr />
     <ul>
-      <%= for {id, player} <- @players do %>
-        <li id={id}><%= player.name %> - <%= if Map.has_key?(@round_player_answers, id), do: "✅", else: "⌛"%></li>
+      <%= for player <- Enum.map(@players, &Leafblower.UserSupervisor.get_user!/1) do %>
+        <li id={player.id}><%= player.name %> - <%= if Map.has_key?(@round_player_answers, player.id), do: "✅", else: "⌛"%></li>
       <% end %>
     </ul>
     """
@@ -143,21 +143,21 @@ defmodule LeafblowerWeb.GameLive do
     <%= if @is_leader? do%>
     <ul>
       <h3>Pick a winner</h3>
-      <%= for {id, player} <- @players do %>
-        <%= if Map.has_key?(@round_player_answers, id) do %>
-          <li><button phx-click="start_round" id={id}><%= "#{player.name} #{@round_player_answers[id]}" %></button></li>
+      <%= for player <- Enum.map(@players, &Leafblower.UserSupervisor.get_user!/1) do %>
+        <%= if Map.has_key?(@round_player_answers, player.id) do %>
+          <li><button phx-click="start_round" id={player.id}><%= "#{player.name} #{@round_player_answers[player.id]}" %></button></li>
         <% else %>
-          <li><button phx-click="start_round" id={id}><%= player.name %> No answer</button></li>
+          <li><button phx-click="start_round" id={player.id}><%= player.name %> No answer</button></li>
         <% end %>
       <% end %>
     </ul>
     <% else %>
     <ul>
-      <%= for {id, player} <- @players do %>
-        <%= if Map.has_key?(@round_player_answers, id) do %>
-          <li id={id}><%= "#{player.name} #{@round_player_answers[id]}" %></li>
+      <%= for player <- Enum.map(@players, &Leafblower.UserSupervisor.get_user!/1) do %>
+        <%= if Map.has_key?(@round_player_answers, player.id) do %>
+          <li id={player.id}><%= "#{player.name} #{@round_player_answers[player.id]}" %></li>
         <% else %>
-          <li id={id}><%= player.name %> No answer </li>
+          <li id={player.id}><%= player.name %> No answer </li>
         <% end %>
       <% end %>
     </ul>

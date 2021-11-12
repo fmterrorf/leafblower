@@ -6,9 +6,7 @@ defmodule Leafblower.GameStatem do
 
   @type data :: %{
           id: binary(),
-          players: %{},
-          player_ids: list(binary()),
-          player_id_idx: non_neg_integer(),
+          players: MapSet.t(),
           round_number: non_neg_integer(),
           round_player_answers: %{binary() => any()},
           leader_player_id: binary() | nil,
@@ -19,14 +17,20 @@ defmodule Leafblower.GameStatem do
 
   def child_spec(init_arg) do
     id = Keyword.fetch!(init_arg, :id)
-    %{id: "#{__MODULE__}-#{id}", start: {__MODULE__, :start_link, [init_arg]}}
+
+    %{
+      id: "#{__MODULE__}-#{id}",
+      start: {__MODULE__, :start_link, [init_arg]},
+      restart: :transient,
+      shutdown: 10_000
+    }
   end
 
   def start_link(arg) do
     id = Keyword.fetch!(arg, :id)
     round_number = Keyword.get(arg, :round_number, 0)
     round_player_answers = Keyword.get(arg, :round_player_answers, %{})
-    players = Keyword.get(arg, :players, %{})
+    players = Keyword.get(arg, :players, MapSet.new())
     min_player_count = Keyword.get(arg, :min_player_count, 3)
     leader_player_id = Keyword.get(arg, :leader_player_id)
     countdown_duration = Keyword.get(arg, :countdown_duration, 0)
@@ -36,8 +40,6 @@ defmodule Leafblower.GameStatem do
       %{
         id: id,
         players: players,
-        player_ids: Map.keys(players),
-        player_id_idx: 0,
         round_number: round_number,
         round_player_answers: round_player_answers,
         leader_player_id: leader_player_id,
@@ -77,14 +79,13 @@ defmodule Leafblower.GameStatem do
         {:call, from},
         {:join_player, player_id},
         :waiting_for_players,
-        %{players: players, player_ids: player_ids, player_score: player_score} = data
+        %{players: players, player_score: player_score} = data
       ) do
     data =
       %{
         data
         | # Right now we store the whole user data
-          players: Map.put(players, player_id, Leafblower.ETSKv.get(player_id)),
-          player_ids: [player_id | player_ids],
+          players: MapSet.put(players, player_id),
           player_score: Map.put(player_score, player_id, 0)
       }
       |> maybe_assign_leader()
@@ -98,12 +99,12 @@ defmodule Leafblower.GameStatem do
         {:start_round, player_id},
         status,
         %{
-          players: players,
+          players: %MapSet{map: player_map},
           leader_player_id: player_id,
           min_player_count: min_player_count
         } = data
       )
-      when map_size(players) >= min_player_count and
+      when map_size(player_map) >= min_player_count and
              status in [:waiting_for_players, :round_ended] do
     start_timer(data, :round_started_waiting_for_response)
     data = %{data | round_number: data.round_number + 1, round_player_answers: %{}}
@@ -163,9 +164,9 @@ defmodule Leafblower.GameStatem do
     |> GameTicker.start_tick(action_meta, data.countdown_duration)
   end
 
-  defp maybe_assign_leader(%{players: players} = data) do
-    if map_size(players) == 1 do
-      %{data | leader_player_id: players |> Map.keys() |> hd}
+  defp maybe_assign_leader(data) do
+    if data.leader_player_id == nil do
+      %{data | leader_player_id: MapSet.to_list(data.players) |> hd}
     else
       data
     end
