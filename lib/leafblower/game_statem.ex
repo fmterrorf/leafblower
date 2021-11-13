@@ -6,7 +6,8 @@ defmodule Leafblower.GameStatem do
 
   @type data :: %{
           id: binary(),
-          players: MapSet.t(),
+          active_players: MapSet.t(),
+          player_info: map(),
           round_number: non_neg_integer(),
           round_player_answers: %{binary() => any()},
           leader_player_id: binary() | nil,
@@ -30,28 +31,30 @@ defmodule Leafblower.GameStatem do
     id = Keyword.fetch!(arg, :id)
     round_number = Keyword.get(arg, :round_number, 0)
     round_player_answers = Keyword.get(arg, :round_player_answers, %{})
-    players = Keyword.get(arg, :players, MapSet.new())
+    active_players = Keyword.get(arg, :active_players, MapSet.new())
     min_player_count = Keyword.get(arg, :min_player_count, 3)
     leader_player_id = Keyword.get(arg, :leader_player_id)
     countdown_duration = Keyword.get(arg, :countdown_duration, 0)
+    player_info = Keyword.get(arg, :player_info, %{})
 
     GenStateMachine.start_link(
       __MODULE__,
       %{
         id: id,
-        players: players,
+        active_players: active_players,
         round_number: round_number,
         round_player_answers: round_player_answers,
         leader_player_id: leader_player_id,
         min_player_count: min_player_count,
         countdown_duration: countdown_duration,
-        player_score: %{}
+        player_info: player_info,
+        player_score: %{},
       },
       name: via_tuple(id)
     )
   end
 
-  def join_player(game, player_id), do: GenStateMachine.call(game, {:join_player, player_id})
+  def join_player(game, player_id, player_name), do: GenStateMachine.call(game, {:join_player, player_id, player_name})
   def start_round(game, player_id), do: GenStateMachine.call(game, {:start_round, player_id})
 
   def submit_answer(game, player_id, answer),
@@ -77,16 +80,17 @@ defmodule Leafblower.GameStatem do
   @impl true
   def handle_event(
         {:call, from},
-        {:join_player, player_id},
+        {:join_player, player_id, player_name},
         :waiting_for_players,
-        %{players: players, player_score: player_score} = data
+        %{active_players: active_players, player_score: player_score, player_info: player_info} = data
       ) do
     data =
       %{
         data
         | # Right now we store the whole user data
-          players: MapSet.put(players, player_id),
-          player_score: Map.put(player_score, player_id, 0)
+          active_players: MapSet.put(active_players, player_id),
+          player_score: Map.put(player_score, player_id, 0),
+          player_info: Map.put(player_info, player_id, %{name: player_name})
       }
       |> maybe_assign_leader()
 
@@ -99,7 +103,7 @@ defmodule Leafblower.GameStatem do
         {:start_round, player_id},
         status,
         %{
-          players: %MapSet{map: player_map},
+          active_players: %MapSet{map: player_map},
           leader_player_id: player_id,
           min_player_count: min_player_count
         } = data
@@ -118,12 +122,12 @@ defmodule Leafblower.GameStatem do
         :cast,
         {:submit_answer, player_id, answer},
         :round_started_waiting_for_response = status,
-        %{players: players, round_player_answers: round_player_answers} = data
+        %{active_players: active_players, round_player_answers: round_player_answers} = data
       )
-      when map_size(round_player_answers) < map_size(players) do
+      when map_size(round_player_answers) < map_size(active_players) do
     data = %{data | round_player_answers: Map.put(round_player_answers, player_id, answer)}
 
-    if map_size(data.players) == map_size(data.round_player_answers) do
+    if map_size(data.active_players) == map_size(data.round_player_answers) do
       data.id
       |> GameTicker.via_tuple()
       |> GameTicker.stop_tick(status)
@@ -166,7 +170,7 @@ defmodule Leafblower.GameStatem do
 
   defp maybe_assign_leader(data) do
     if data.leader_player_id == nil do
-      %{data | leader_player_id: MapSet.to_list(data.players) |> hd}
+      %{data | leader_player_id: MapSet.to_list(data.active_players) |> hd}
     else
       data
     end

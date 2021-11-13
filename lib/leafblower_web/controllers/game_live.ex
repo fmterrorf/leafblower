@@ -33,7 +33,7 @@ defmodule LeafblowerWeb.GameLive do
        game_data: data,
        user_id: user_id,
        countdown_left: nil,
-       joined_in_game?: MapSet.member?(data.players, user_id),
+       joined_in_game?: MapSet.member?(data.active_players, user_id),
        is_leader?: data.leader_player_id == user_id
      )}
   end
@@ -61,9 +61,10 @@ defmodule LeafblowerWeb.GameLive do
   end
 
   @impl true
-  def handle_event("join_game", _value, socket) do
+  def handle_event("join_game", %{"join_game" => value}, socket) do
     %{game: game, user_id: user_id} = socket.assigns
-    :ok = GameStatem.join_player(game, user_id)
+    # TODO: Make use of `player_name` in the form
+    :ok = GameStatem.join_player(game, user_id, value["player_name"])
     {:noreply, assign(socket, joined_in_game?: true)}
   end
 
@@ -79,11 +80,11 @@ defmodule LeafblowerWeb.GameLive do
     {:noreply, socket}
   end
 
-  def render_waiting_for_players(players, min_player_count, is_leader?) do
+  def render_waiting_for_players(active_players, min_player_count, is_leader?) do
     assigns = %{
-      disabled: map_size(players) < min_player_count,
+      disabled: map_size(active_players) < min_player_count,
       is_leader?: is_leader?,
-      players: players
+      active_players: active_players
     }
 
     ~H"""
@@ -92,7 +93,7 @@ defmodule LeafblowerWeb.GameLive do
     <% end %>
 
     <ul>
-      <%= for player <- Enum.map(@players, &Leafblower.UserSupervisor.get_user!/1) do %>
+      <%= for player <- Enum.map(@active_players, &Leafblower.UserSupervisor.get_user!/1) do %>
         <li id={player.id}><%= player.name %></li>
       <% end %>
     </ul>
@@ -101,12 +102,12 @@ defmodule LeafblowerWeb.GameLive do
 
   def render_round_started_waiting_for_response(
         player_id,
-        players,
+        active_players,
         round_player_answers,
         countdown_left
       ) do
     assigns = %{
-      players: players,
+      active_players: active_players,
       round_player_answers: round_player_answers,
       countdown_left: countdown_left,
       disabled: Map.has_key?(round_player_answers, player_id)
@@ -125,16 +126,16 @@ defmodule LeafblowerWeb.GameLive do
     </ul>
     <hr />
     <ul>
-      <%= for player <- Enum.map(@players, &Leafblower.UserSupervisor.get_user!/1) do %>
+      <%= for player <- Enum.map(@active_players, &Leafblower.UserSupervisor.get_user!/1) do %>
         <li id={player.id}><%= player.name %> - <%= if Map.has_key?(@round_player_answers, player.id), do: "✅", else: "⌛"%></li>
       <% end %>
     </ul>
     """
   end
 
-  def render_round_ended(players, round_player_answers, is_leader?) do
+  def render_round_ended(active_players, round_player_answers, is_leader?) do
     assigns = %{
-      players: players,
+      active_players: active_players,
       round_player_answers: round_player_answers,
       is_leader?: is_leader?
     }
@@ -143,7 +144,7 @@ defmodule LeafblowerWeb.GameLive do
     <%= if @is_leader? do%>
     <ul>
       <h3>Pick a winner</h3>
-      <%= for player <- Enum.map(@players, &Leafblower.UserSupervisor.get_user!/1) do %>
+      <%= for player <- Enum.map(@active_players, &Leafblower.UserSupervisor.get_user!/1) do %>
         <%= if Map.has_key?(@round_player_answers, player.id) do %>
           <li><button phx-click="start_round" id={player.id}><%= "#{player.name} #{@round_player_answers[player.id]}" %></button></li>
         <% else %>
@@ -153,7 +154,7 @@ defmodule LeafblowerWeb.GameLive do
     </ul>
     <% else %>
     <ul>
-      <%= for player <- Enum.map(@players, &Leafblower.UserSupervisor.get_user!/1) do %>
+      <%= for player <- Enum.map(@active_players, &Leafblower.UserSupervisor.get_user!/1) do %>
         <%= if Map.has_key?(@round_player_answers, player.id) do %>
           <li id={player.id}><%= "#{player.name} #{@round_player_answers[player.id]}" %></li>
         <% else %>
@@ -185,16 +186,16 @@ defmodule LeafblowerWeb.GameLive do
 
     <%= case @game_status do
       :waiting_for_players -> render_waiting_for_players(
-        @game_data.players,
+        @game_data.active_players,
         @game_data.min_player_count,
         @is_leader?)
       :round_started_waiting_for_response -> render_round_started_waiting_for_response(
         @user_id,
-        @game_data.players,
+        @game_data.active_players,
         @game_data.round_player_answers,
         @countdown_left)
       :round_ended -> render_round_ended(
-        @game_data.players,
+        @game_data.active_players,
         @game_data.round_player_answers,
         @is_leader?)
       _ -> ""
