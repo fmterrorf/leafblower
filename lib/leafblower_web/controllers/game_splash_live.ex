@@ -5,13 +5,13 @@ defmodule LeafblowerWeb.GameSplashLive do
     {:ok,
      assign(socket,
        user_id: user_id,
-       changeset: cast_user(%{name: ""}, %{})
+       changeset: cast_user()
      )}
   end
 
   def handle_event("validate", %{"user" => params}, socket) do
     changeset =
-      cast_user(%{}, params)
+      cast_user(params)
       |> Map.put(:action, :insert)
 
     {:noreply, assign(socket, changeset: changeset)}
@@ -20,10 +20,14 @@ defmodule LeafblowerWeb.GameSplashLive do
   def handle_event("new_game", %{"user" => params}, socket) do
     id = Ecto.UUID.generate()
 
+    data =
+      cast_user(params)
+      |> Ecto.Changeset.apply_changes()
+
     {:ok, game} =
       Leafblower.GameCache.new_game(id: id, countdown_duration: 5, min_player_count: 1)
 
-    Leafblower.GameStatem.join_player(game, socket.assigns.user_id, params["name"])
+    Leafblower.GameStatem.join_player(game, socket.assigns.user_id, data.name)
 
     {:noreply,
      socket
@@ -32,7 +36,7 @@ defmodule LeafblowerWeb.GameSplashLive do
 
   def render(assigns) do
     ~H"""
-    <.form let={f} for={@changeset} phx-change="validate" phx-submit="save" as="user">
+    <.form let={f} for={@changeset} phx-change="validate" phx-submit="new_game" as="user">
       <%= label f, :name %>
       <%= text_input f, :name %>
       <%= error_tag f, :name %>
@@ -42,9 +46,10 @@ defmodule LeafblowerWeb.GameSplashLive do
     """
   end
 
-  defp cast_user(data, params) do
-    {data, %{name: :string}}
+  defp cast_user(params \\ %{}) do
+    {%{}, %{name: :string}}
     |> Ecto.Changeset.cast(params, [:name])
     |> Ecto.Changeset.validate_required([:name])
+    |> Ecto.Changeset.validate_length(:name, max: 15)
   end
 end
