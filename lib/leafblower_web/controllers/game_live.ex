@@ -35,7 +35,8 @@ defmodule LeafblowerWeb.GameLive do
        countdown_left: nil,
        joined_in_game?: MapSet.member?(data.active_players, user_id),
        is_leader?: data.leader_player_id == user_id
-     )}
+     )
+     |> maybe_assign_changeset()}
   end
 
   def do_mount(nil, _params, _session, socket) do
@@ -60,12 +61,32 @@ defmodule LeafblowerWeb.GameLive do
     {:noreply, assign(socket, countdown_left: countdown_left)}
   end
 
+  defp maybe_assign_changeset(%{assigns: %{joined_in_game?: false}} = socket) do
+    assign(socket, changeset: cast_user())
+  end
+
+  defp maybe_assign_changeset(socket), do: assign(socket, changeset: nil)
+
+  defp cast_user(params \\ %{}) do
+    {%{}, %{name: :string}}
+    |> Ecto.Changeset.cast(params, [:name])
+    |> Ecto.Changeset.validate_required([:name])
+    |> Ecto.Changeset.validate_length(:name, max: 15)
+  end
+
   @impl true
-  def handle_event("join_game", %{"join_game" => value}, socket) do
+  def handle_event("join_game", %{"user" => user}, socket) do
     %{game: game, user_id: user_id} = socket.assigns
-    # TODO: Make use of `player_name` in the form
-    :ok = GameStatem.join_player(game, user_id, value["player_name"])
+    :ok = GameStatem.join_player(game, user_id, user["name"])
     {:noreply, assign(socket, joined_in_game?: true)}
+  end
+
+  def handle_event("validate_join_game", %{"user" => params}, socket) do
+    changeset =
+      cast_user(params)
+      |> Map.put(:action, :insert)
+
+    {:noreply, assign(socket, changeset: changeset)}
   end
 
   def handle_event("start_round", _value, socket) do
@@ -80,11 +101,12 @@ defmodule LeafblowerWeb.GameLive do
     {:noreply, socket}
   end
 
-  def render_waiting_for_players(active_players, min_player_count, is_leader?) do
+  def render_waiting_for_players(active_players, min_player_count, player_info, is_leader?) do
     assigns = %{
       disabled: map_size(active_players) < min_player_count,
       is_leader?: is_leader?,
-      active_players: active_players
+      active_players: active_players,
+      player_info: player_info
     }
 
     ~H"""
@@ -93,7 +115,7 @@ defmodule LeafblowerWeb.GameLive do
     <% end %>
 
     <ul>
-      <%= for player <- Enum.map(@active_players, &Leafblower.UserSupervisor.get_user!/1) do %>
+      <%= for player <- Enum.map(@active_players, fn id -> @player_info[id] end) do %>
         <li id={player.id}><%= player.name %></li>
       <% end %>
     </ul>
@@ -133,10 +155,11 @@ defmodule LeafblowerWeb.GameLive do
     """
   end
 
-  def render_round_ended(active_players, round_player_answers, is_leader?) do
+  def render_round_ended(active_players, round_player_answers, player_info, is_leader?) do
     assigns = %{
       active_players: active_players,
       round_player_answers: round_player_answers,
+      player_info: player_info,
       is_leader?: is_leader?
     }
 
@@ -144,7 +167,7 @@ defmodule LeafblowerWeb.GameLive do
     <%= if @is_leader? do%>
     <ul>
       <h3>Pick a winner</h3>
-      <%= for player <- Enum.map(@active_players, &Leafblower.UserSupervisor.get_user!/1) do %>
+      <%= for player <- Enum.map(@active_players, fn id -> @player_info[id] end) do %>
         <%= if Map.has_key?(@round_player_answers, player.id) do %>
           <li><button phx-click="start_round" id={player.id}><%= "#{player.name} #{@round_player_answers[player.id]}" %></button></li>
         <% else %>
@@ -154,7 +177,7 @@ defmodule LeafblowerWeb.GameLive do
     </ul>
     <% else %>
     <ul>
-      <%= for player <- Enum.map(@active_players, &Leafblower.UserSupervisor.get_user!/1) do %>
+      <%= for player <- Enum.map(@active_players, fn id -> @player_info[id] end) do %>
         <%= if Map.has_key?(@round_player_answers, player.id) do %>
           <li id={player.id}><%= "#{player.name} #{@round_player_answers[player.id]}" %></li>
         <% else %>
@@ -173,7 +196,13 @@ defmodule LeafblowerWeb.GameLive do
   def render(%{joined_in_game?: false} = assigns) do
     ~H"""
     <%= if @game_status == :waiting_for_players do %>
-      <button phx-click="join_game">Join Game</button>
+      <.form let={f} for={@changeset} phx-change="validate_join_game" phx-submit="join_game" as="user">
+        <%= label f, :name %>
+        <%= text_input f, :name %>
+        <%= error_tag f, :name %>
+
+        <%= submit "New Game", [disabled: length(@changeset.errors) > 0] %>
+      </.form>
     <% else %>
       <h3>Game has started<h3>
     <% end %>
@@ -188,6 +217,7 @@ defmodule LeafblowerWeb.GameLive do
       :waiting_for_players -> render_waiting_for_players(
         @game_data.active_players,
         @game_data.min_player_count,
+        @game_data.player_info,
         @is_leader?)
       :round_started_waiting_for_response -> render_round_started_waiting_for_response(
         @user_id,
@@ -197,6 +227,7 @@ defmodule LeafblowerWeb.GameLive do
       :round_ended -> render_round_ended(
         @game_data.active_players,
         @game_data.round_player_answers,
+        @game_data.player_info,
         @is_leader?)
       _ -> ""
     end %>
