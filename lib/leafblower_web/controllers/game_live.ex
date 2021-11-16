@@ -50,11 +50,19 @@ defmodule LeafblowerWeb.GameLive do
   def handle_info({:game_state_changed, state, data}, socket) do
     socket =
       case state do
-        :round_ended -> assign(socket, countdown_left: nil)
-        _ -> socket
+        :round_ended ->
+          assign(socket, countdown_left: nil)
+
+        _ ->
+          socket
       end
 
-    {:noreply, assign(socket, game_status: state, game_data: data)}
+    {:noreply,
+     assign(socket,
+       game_status: state,
+       game_data: data,
+       is_leader?: data.leader_player_id == socket.assigns.user_id
+     )}
   end
 
   def handle_info({:ticker_ticked, countdown_left}, socket) do
@@ -103,6 +111,12 @@ defmodule LeafblowerWeb.GameLive do
     {:noreply, socket}
   end
 
+  def handle_event("pick_winner", %{"id" => id}, socket) do
+    %{game: game} = socket.assigns
+    :ok = GameStatem.pick_winner(game, id)
+    {:noreply, socket}
+  end
+
   @impl true
   @spec render(assigns()) :: Phoenix.LiveView.Rendered.t()
 
@@ -142,6 +156,10 @@ defmodule LeafblowerWeb.GameLive do
         @game_data.round_player_answers,
         @game_data.player_info,
         @is_leader?)
+      :show_winner -> render_winner(
+        @game_data.player_info[@game_data.winner_player_id],
+        @is_leader?
+      )
       _ -> ""
     end %>
     """
@@ -169,11 +187,11 @@ defmodule LeafblowerWeb.GameLive do
   end
 
   defp render_round_started_waiting_for_response(
-        player_id,
-        active_players,
-        round_player_answers,
-        countdown_left
-      ) do
+         player_id,
+         active_players,
+         round_player_answers,
+         countdown_left
+       ) do
     assigns = %{
       active_players: active_players,
       round_player_answers: round_player_answers,
@@ -215,9 +233,9 @@ defmodule LeafblowerWeb.GameLive do
       <h3>Pick a winner</h3>
       <%= for player <- Enum.map(@active_players, fn id -> @player_info[id] end) do %>
         <%= if Map.has_key?(@round_player_answers, player.id) do %>
-          <li><button phx-click="start_round" id={player.id}><%= "#{player.name} #{@round_player_answers[player.id]}" %></button></li>
+          <li><button phx-click="pick_winner" phx-value-id={player.id} id={player.id}><%= "#{player.name} #{@round_player_answers[player.id]}" %></button></li>
         <% else %>
-          <li><button phx-click="start_round" id={player.id}><%= player.name %> No answer</button></li>
+          <li><button phx-click="pick_winner" phx-value-id={player.id}><%= player.name %> No answer</button></li>
         <% end %>
       <% end %>
     </ul>
@@ -231,6 +249,20 @@ defmodule LeafblowerWeb.GameLive do
         <% end %>
       <% end %>
     </ul>
+    <% end %>
+    """
+  end
+
+  defp render_winner(winner_player, is_leader?) do
+    assigns = %{
+      is_leader?: is_leader?,
+      winner_player: winner_player
+    }
+
+    ~H"""
+    <p>And the winner for this round is <b> <%= @winner_player.name %> </b> 🎉🎉🎉 </p>
+    <%= if @is_leader? do%>
+      <button phx-click="start_round" >Start Next Round</button>
     <% end %>
     """
   end

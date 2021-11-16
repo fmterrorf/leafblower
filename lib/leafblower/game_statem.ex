@@ -12,6 +12,7 @@ defmodule Leafblower.GameStatem do
           round_number: non_neg_integer(),
           round_player_answers: %{binary() => any()},
           leader_player_id: binary() | nil,
+          winner_player_id: binary() | nil,
           min_player_count: non_neg_integer(),
           countdown_duration: non_neg_integer(),
           player_score: %{binary() => non_neg_integer()}
@@ -49,7 +50,8 @@ defmodule Leafblower.GameStatem do
         min_player_count: min_player_count,
         countdown_duration: countdown_duration,
         player_info: player_info,
-        player_score: %{}
+        player_score: %{},
+        winner_player_id: nil
       },
       name: via_tuple(id)
     )
@@ -62,6 +64,9 @@ defmodule Leafblower.GameStatem do
 
   def submit_answer(game, player_id, answer),
     do: GenStateMachine.cast(game, {:submit_answer, player_id, answer})
+
+  def pick_winner(game, player_id),
+    do: GenStateMachine.cast(game, {:pick_winner, player_id})
 
   def subscribe(id), do: Phoenix.PubSub.subscribe(Leafblower.PubSub, topic(id))
   def via_tuple(id), do: ProcessRegistry.via_tuple({__MODULE__, id})
@@ -96,7 +101,7 @@ defmodule Leafblower.GameStatem do
           player_score: Map.put(player_score, player_id, 0),
           player_info: Map.put(player_info, player_id, %{name: player_name, id: player_id})
       }
-      |> maybe_assign_leader()
+      |> maybe_assign_leader(:start_of_game)
 
     {:keep_state, data, [{:reply, from, :ok}, {:next_event, :internal, :broadcast}]}
   end
@@ -113,9 +118,21 @@ defmodule Leafblower.GameStatem do
         } = data
       )
       when map_size(player_map) >= min_player_count and
-             status in [:waiting_for_players, :round_ended] do
+             status in [:waiting_for_players, :show_winner] do
     start_timer(data, :round_started_waiting_for_response)
-    data = %{data | round_number: data.round_number + 1, round_player_answers: %{}}
+
+    data = %{
+      data
+      | round_number: data.round_number + 1,
+        round_player_answers: %{},
+        winner_player_id: nil
+    }
+
+    data = if status == :show_winner do
+      maybe_assign_leader(data, :end_of_round)
+    else
+      data
+    end
 
     {:next_state, :round_started_waiting_for_response, data,
      [{:reply, from, :ok}, {:next_event, :internal, :broadcast}]}
@@ -144,6 +161,23 @@ defmodule Leafblower.GameStatem do
     else
       {:keep_state, data, [{:next_event, :internal, :broadcast}]}
     end
+  end
+
+  @impl true
+  def handle_event(
+        :cast,
+        {:pick_winner, player_id},
+        :round_ended,
+        %{player_score: player_score} = data
+      ) do
+    data =
+      %{
+        data
+        | player_score: Map.update(player_score, player_id, 0, &(&1 + 1)),
+          winner_player_id: player_id
+      }
+
+    {:next_state, :show_winner, data, [{:next_event, :internal, :broadcast}]}
   end
 
   # info
@@ -176,12 +210,35 @@ defmodule Leafblower.GameStatem do
     |> GameTicker.start_tick(action_meta, data.countdown_duration)
   end
 
-  defp maybe_assign_leader(data) do
-    if data.leader_player_id == nil do
-      %{data | leader_player_id: MapSet.to_list(data.active_players) |> hd}
+  defp maybe_assign_leader(
+         %{
+           leader_player_id: leader_player_id,
+           active_players: active_players
+         } = data,
+         :start_of_game
+       ) do
+    active_players = MapSet.to_list(active_players)
+
+    if leader_player_id == nil do
+      %{data | leader_player_id: active_players |> hd}
     else
       data
     end
+  end
+
+  defp maybe_assign_leader(
+         %{
+           leader_player_id: leader_player_id,
+           active_players: active_players
+         } = data,
+         :end_of_round
+       ) do
+    active_players = MapSet.to_list(active_players)
+
+    new_idx =
+      rem(Enum.find_index(active_players, &(&1 == leader_player_id)) + 1, length(active_players))
+
+    %{data | leader_player_id: Enum.at(active_players, new_idx)}
   end
 
   defp topic(id), do: "#{__MODULE__}/#{id}"
