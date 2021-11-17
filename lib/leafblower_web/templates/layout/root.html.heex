@@ -14,7 +14,11 @@
       <section class="container">
         <nav>
         </nav>
-        <div><b>Leafblower</b></div>
+        <div>
+          <%= link to: "/" do %>
+            <b>Leafblower</b>
+          <% end %>
+        </div>
       </section>
     </header>
     <%= @inner_content %>

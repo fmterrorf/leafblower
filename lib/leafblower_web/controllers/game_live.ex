@@ -36,6 +36,7 @@ defmodule LeafblowerWeb.GameLive do
        joined_in_game?: MapSet.member?(data.active_players, user_id),
        is_leader?: data.leader_player_id == user_id
      )
+     |> clear_flash()
      |> maybe_assign_changeset()}
   end
 
@@ -65,8 +66,12 @@ defmodule LeafblowerWeb.GameLive do
      )}
   end
 
-  def handle_info({:ticker_ticked, countdown_left}, socket) do
+  def handle_info({:ticker_ticked, countdown_left}, socket) when countdown_left > 1 do
     {:noreply, assign(socket, countdown_left: countdown_left)}
+  end
+
+  def handle_info({:ticker_ticked, _countdown_left}, socket) do
+    {:noreply, assign(socket, countdown_left: nil)}
   end
 
   defp maybe_assign_changeset(%{assigns: %{joined_in_game?: false}} = socket) do
@@ -86,7 +91,11 @@ defmodule LeafblowerWeb.GameLive do
   def handle_event("join_game", %{"user" => user}, socket) do
     %{game: game, user_id: user_id} = socket.assigns
     :ok = GameStatem.join_player(game, user_id, user["name"])
-    {:noreply, assign(socket, joined_in_game?: true)}
+
+    {:noreply,
+     socket
+     |> clear_flash()
+     |> assign(joined_in_game?: true)}
   end
 
   def handle_event("validate_join_game", %{"user" => params}, socket) do
@@ -128,7 +137,7 @@ defmodule LeafblowerWeb.GameLive do
         <%= text_input f, :name %>
         <%= error_tag f, :name %>
 
-        <%= submit "New Game", [disabled: length(@changeset.errors) > 0] %>
+        <%= submit "Join Game", [disabled: length(@changeset.errors) > 0] %>
       </.form>
     <% else %>
       <h3>Game has started<h3>
@@ -139,6 +148,9 @@ defmodule LeafblowerWeb.GameLive do
   def render(assigns) do
     ~H"""
     <pre><%= Atom.to_string(@game_status) %></pre>
+    <%= if @countdown_left != nil do %>
+      <pre>Countdown: <%= @countdown_left %></pre>
+    <% end %>
 
     <%= case @game_status do
       :waiting_for_players -> render_waiting_for_players(
@@ -150,7 +162,9 @@ defmodule LeafblowerWeb.GameLive do
         @user_id,
         @game_data.active_players,
         @game_data.round_player_answers,
-        @countdown_left)
+        @countdown_left,
+        @game_data.leader_player_id,
+        @is_leader?)
       :round_ended -> render_round_ended(
         @game_data.active_players,
         @game_data.round_player_answers,
@@ -166,8 +180,10 @@ defmodule LeafblowerWeb.GameLive do
   end
 
   defp render_waiting_for_players(active_players, min_player_count, player_info, is_leader?) do
+    active_players_size = MapSet.size(active_players)
+
     assigns = %{
-      disabled: map_size(active_players) < min_player_count,
+      disabled: active_players_size < min_player_count,
       is_leader?: is_leader?,
       active_players: active_players,
       player_info: player_info
@@ -190,26 +206,29 @@ defmodule LeafblowerWeb.GameLive do
          player_id,
          active_players,
          round_player_answers,
-         countdown_left
+         countdown_left,
+         leader_player_id,
+         is_leader?
        ) do
     assigns = %{
-      active_players: active_players,
+      active_players:  MapSet.delete(active_players, leader_player_id),
       round_player_answers: round_player_answers,
       countdown_left: countdown_left,
-      disabled: Map.has_key?(round_player_answers, player_id)
+      disabled: Map.has_key?(round_player_answers, player_id),
+      is_leader?: is_leader?
     }
 
     ~H"""
-    <%= if @countdown_left != nil do %>
-      <pre>Countdown: <%= @countdown_left %></pre>
-    <% end %>
-
+    <%= if !@is_leader? do%>
     <ul>
       <li id="answer-a"><button {[disabled: @disabled]} phx-click="submit_answer" phx-value-id="a">a</button></li>
       <li id="answer-b"><button {[disabled: @disabled]} phx-click="submit_answer" phx-value-id="b">b</button></li>
       <li id="answer-c"><button {[disabled: @disabled]} phx-click="submit_answer" phx-value-id="c">c</button></li>
       <li id="answer-d"><button {[disabled: @disabled]} phx-click="submit_answer" phx-value-id="d">d</button></li>
     </ul>
+    <% else %>
+      <p>Players are picking their answers. Please wait</p>
+    <% end %>
     <hr />
     <ul>
       <%= for player <- Enum.map(@active_players, &Leafblower.UserSupervisor.get_user!/1) do %>
