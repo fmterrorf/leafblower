@@ -15,7 +15,10 @@ defmodule Leafblower.GameStatem do
           winner_player_id: binary() | nil,
           min_player_count: non_neg_integer(),
           countdown_duration: non_neg_integer(),
-          player_score: %{binary() => non_neg_integer()}
+          player_score: %{binary() => non_neg_integer()},
+          deck: MapSet.t(binary()),
+          player_hand: %{binary() => MapSet.t(binary())},
+          discard_pile: MapSet.t(),
         }
 
   def child_spec(init_arg) do
@@ -38,6 +41,8 @@ defmodule Leafblower.GameStatem do
     leader_player_id = Keyword.get(arg, :leader_player_id)
     countdown_duration = Keyword.get(arg, :countdown_duration, 0)
     player_info = Keyword.get(arg, :player_info, %{})
+    deck = Keyword.get(arg, :deck, MapSet.new())
+    player_hand = Keyword.get(arg, :player_hand, MapSet.new())
 
     GenStateMachine.start_link(
       __MODULE__,
@@ -51,6 +56,8 @@ defmodule Leafblower.GameStatem do
         countdown_duration: countdown_duration,
         player_info: player_info,
         player_score: %{},
+        player_hand: player_hand,
+        deck: deck,
         winner_player_id: nil
       },
       name: via_tuple(id)
