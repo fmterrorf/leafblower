@@ -1,5 +1,6 @@
 /* This file is for your main application CSS */
 @import "./phoenix.css";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@500&display=swap');
 
 /* Alerts and form errors used by phx.new */
 .alert {
@@ -86,4 +87,58 @@
   color: black;
   text-decoration: none;
   cursor: pointer;
+}
+
+
+/* Card */
+.card {
+  /* Card Sizing */
+  width: 2.5in;
+  height: 3in;
+  border-radius: .25in;
+  margin: 10px;
+}
+
+.dark {
+  /* Color information */
+  border: 3px solid black;
+  color: white;
+  background: black;
+}
+
+.light {
+  /* Color information */
+  border: 3px solid black;
+  color: black;
+  background: white;
+}
+
+.text {
+  font-family: 'Inter', sans-serif;
+  font-weight: 900;
+  text-align: start;
+  font-size: 1.5rem;
+  word-wrap: break-word;
+  display: block;
+  padding: 2rem;
+}
+
+.card-container { 
+  display: flex;   
+  flex-wrap: wrap;
+  list-style: none;
+  justify-content: center;
+}
+
+@media (max-width: 576px) { /* Small devices (landscape phones, 576px and up) */
+    .card-container { 
+      scroll-snap-type: y mandatory;
+      overflow-x: auto;
+      flex-wrap: nowrap;
+    }
+
+    .card-container > * {
+      flex-shrink: 0;
+      scroll-snap-align: center;
+    }
 }

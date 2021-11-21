@@ -57,7 +57,6 @@ defmodule LeafblowerWeb.GameLive do
         _ ->
           socket
       end
-
     {:noreply,
      assign(socket,
        game_status: state,
@@ -149,7 +148,7 @@ defmodule LeafblowerWeb.GameLive do
     ~H"""
     <pre><%= Atom.to_string(@game_status) %></pre>
     <%= if @countdown_left != nil do %>
-      <pre>Countdown: <%= @countdown_left %></pre>
+      <pre id="countdown">Countdown: <%= @countdown_left %></pre>
     <% end %>
 
     <%= case @game_status do
@@ -162,8 +161,8 @@ defmodule LeafblowerWeb.GameLive do
         @user_id,
         @game_data.active_players,
         @game_data.round_player_answers,
-        @countdown_left,
         @game_data.leader_player_id,
+        @game_data.player_cards[@user_id],
         @is_leader?)
       :round_ended -> render_round_ended(
         @game_data.active_players,
@@ -206,35 +205,42 @@ defmodule LeafblowerWeb.GameLive do
          player_id,
          active_players,
          round_player_answers,
-         countdown_left,
          leader_player_id,
+         cards,
          is_leader?
        ) do
     assigns = %{
       active_players:  MapSet.delete(active_players, leader_player_id),
       round_player_answers: round_player_answers,
-      countdown_left: countdown_left,
       disabled: Map.has_key?(round_player_answers, player_id),
+      cards: cards,
       is_leader?: is_leader?
     }
 
     ~H"""
-    <%= if !@is_leader? do%>
-    <ul>
-      <li id="answer-a"><button {[disabled: @disabled]} phx-click="submit_answer" phx-value-id="a">a</button></li>
-      <li id="answer-b"><button {[disabled: @disabled]} phx-click="submit_answer" phx-value-id="b">b</button></li>
-      <li id="answer-c"><button {[disabled: @disabled]} phx-click="submit_answer" phx-value-id="c">c</button></li>
-      <li id="answer-d"><button {[disabled: @disabled]} phx-click="submit_answer" phx-value-id="d">d</button></li>
-    </ul>
-    <% else %>
-      <p>Players are picking their answers. Please wait</p>
-    <% end %>
-    <hr />
-    <ul>
-      <%= for player <- Enum.map(@active_players, &Leafblower.UserSupervisor.get_user!/1) do %>
-        <li id={player.id}><%= player.name %> - <%= if Map.has_key?(@round_player_answers, player.id), do: "✅", else: "⌛"%></li>
-      <% end %>
-    </ul>
+    <div class="container">
+      <div class="row">
+        <%= if !@is_leader? do%>
+          <ul class="card-container">
+          <%= for id <- @cards, card = Leafblower.Deck.card(id, :black) do %>
+            <li id={card["id"]} class="card dark" phx-click="submit_answer" phx-value-id={card["id"]}>
+              <span class="text"><%= card["text"] %></span>
+            </li>
+          <% end %>
+          </ul>
+        <% else %>
+          <p>Players are picking their answers. Please wait</p>
+        <% end %>
+      </div>
+      <hr />
+      <div class="row">
+        <ul>
+          <%= for player <- Enum.map(@active_players, &Leafblower.UserSupervisor.get_user!/1) do %>
+            <li id={player.id}><%= player.name %> - <%= if Map.has_key?(@round_player_answers, player.id), do: "✅", else: "⌛"%></li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
     """
   end
 

@@ -16,9 +16,10 @@ defmodule Leafblower.GameStatem do
           min_player_count: non_neg_integer(),
           countdown_duration: non_neg_integer(),
           player_score: %{binary() => non_neg_integer()},
-          deck: MapSet.t(binary()),
-          player_hand: %{binary() => MapSet.t(binary())},
-          discard_pile: MapSet.t(),
+          deck: Leafblower.Deck.t(),
+          player_cards: %{binary() => MapSet.t(binary())},
+          white_card: binary() | nil,
+          discard_pile: MapSet.t()
         }
 
   def child_spec(init_arg) do
@@ -41,8 +42,8 @@ defmodule Leafblower.GameStatem do
     leader_player_id = Keyword.get(arg, :leader_player_id)
     countdown_duration = Keyword.get(arg, :countdown_duration, 0)
     player_info = Keyword.get(arg, :player_info, %{})
-    deck = Keyword.get(arg, :deck, MapSet.new())
-    player_hand = Keyword.get(arg, :player_hand, MapSet.new())
+    deck = Keyword.get_lazy(arg, :deck, &Leafblower.Deck.get_cards/0)
+    player_cards = Keyword.get(arg, :player_cards, %{})
 
     GenStateMachine.start_link(
       __MODULE__,
@@ -56,9 +57,10 @@ defmodule Leafblower.GameStatem do
         countdown_duration: countdown_duration,
         player_info: player_info,
         player_score: %{},
-        player_hand: player_hand,
+        player_cards: player_cards,
         deck: deck,
-        winner_player_id: nil
+        winner_player_id: nil,
+        white_card: nil
       },
       name: via_tuple(id)
     )
@@ -97,7 +99,7 @@ defmodule Leafblower.GameStatem do
         {:call, from},
         {:join_player, player_id, player_name},
         :waiting_for_players,
-        %{active_players: active_players, player_score: player_score, player_info: player_info} =
+        %{active_players: active_players, player_score: player_score, player_info: player_info, player_cards: player_cards} =
           data
       ) do
     data =
@@ -106,7 +108,8 @@ defmodule Leafblower.GameStatem do
         | # Right now we store the whole user data
           active_players: MapSet.put(active_players, player_id),
           player_score: Map.put(player_score, player_id, 0),
-          player_info: Map.put(player_info, player_id, %{name: player_name, id: player_id})
+          player_info: Map.put(player_info, player_id, %{name: player_name, id: player_id}),
+          player_cards: Map.put(player_cards, player_id, MapSet.new())
       }
       |> maybe_assign_leader(:start_of_game)
 
@@ -143,7 +146,11 @@ defmodule Leafblower.GameStatem do
       end
 
     {:next_state, :round_started_waiting_for_response, data,
-     [{:reply, from, :ok}, {:next_event, :internal, :broadcast}]}
+     [
+       {:reply, from, :ok},
+       {:next_event, :internal, :deal_cards},
+       {:next_event, :internal, :broadcast}
+     ]}
   end
 
   @impl true
@@ -212,12 +219,29 @@ defmodule Leafblower.GameStatem do
   end
 
   # internal
+  def handle_event(:internal, :deal_cards, _state, data) do
+    {white_card, deck} = Leafblower.Deck.take_white_card(data.deck)
+
+    {player_cards, deck} =
+      if data.round_number == 1 do
+        Leafblower.Deck.deal_black_card(
+          deck,
+          data.active_players,
+          data.player_cards,
+          7
+        )
+      else
+        Leafblower.Deck.deal_black_card(deck, data.active_players, data.player_cards, 1)
+      end
+
+    {:keep_state, %{data | white_card: white_card, deck: deck, player_cards: player_cards}}
+  end
 
   def handle_event(:internal, :broadcast, status, data) do
     Phoenix.PubSub.broadcast(
       Leafblower.PubSub,
       topic(data.id),
-      {:game_state_changed, status, data}
+      {:game_state_changed, status, Map.drop(data, [:deck])}
     )
 
     :keep_state_and_data
