@@ -11,6 +11,10 @@ defmodule LeafblowerWeb.Router do
     plug LeafblowerWeb.Plugs.Currentuser
   end
 
+  pipeline :ingame do
+    plug :put_root_layout, {LeafblowerWeb.LayoutView, :ingame}
+  end
+
   pipeline :api do
     plug :accepts, ["json"]
   end
@@ -19,7 +23,11 @@ defmodule LeafblowerWeb.Router do
     pipe_through :browser
 
     live "/", GameSplashLive
-    live "/:id", GameLive
+
+    scope "/:id" do
+      pipe_through :ingame
+      live "/", GameLive
+    end
   end
 
   # Other scopes may use custom stacks.

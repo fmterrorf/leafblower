@@ -1,5 +1,5 @@
 defmodule Leafblower.GameStatem do
-  use GenStateMachine
+  use GenStateMachine, callback_mode: [:handle_event_function, :state_enter]
   alias Leafblower.{GameTicker, ProcessRegistry}
 
   @type status :: :waiting_for_players | :round_started_waiting_for_response | :round_ended
@@ -18,7 +18,7 @@ defmodule Leafblower.GameStatem do
           player_score: %{binary() => non_neg_integer()},
           deck: Leafblower.Deck.t(),
           player_cards: %{binary() => MapSet.t(binary())},
-          white_card: binary() | nil,
+          black_card: binary() | nil,
           discard_pile: MapSet.t()
         }
 
@@ -60,7 +60,7 @@ defmodule Leafblower.GameStatem do
         player_cards: player_cards,
         deck: deck,
         winner_player_id: nil,
-        white_card: nil
+        black_card: nil
       },
       name: via_tuple(id)
     )
@@ -99,8 +99,12 @@ defmodule Leafblower.GameStatem do
         {:call, from},
         {:join_player, player_id, player_name},
         :waiting_for_players,
-        %{active_players: active_players, player_score: player_score, player_info: player_info, player_cards: player_cards} =
-          data
+        %{
+          active_players: active_players,
+          player_score: player_score,
+          player_info: player_info,
+          player_cards: player_cards
+        } = data
       ) do
     data =
       %{
@@ -128,7 +132,7 @@ defmodule Leafblower.GameStatem do
         } = data
       )
       when map_size(player_map) >= min_player_count and
-             status in [:waiting_for_players, :show_winner] do
+             status in [:waiting_for_players, :round_ended, :show_winner] do
     start_timer(data, :no_response_countdown)
 
     data = %{
@@ -159,15 +163,14 @@ defmodule Leafblower.GameStatem do
         {:submit_answer, player_id, answer},
         :round_started_waiting_for_response,
         %{
-          active_players: %MapSet{map: active_players_map},
+          active_players: active_players,
           round_player_answers: round_player_answers
         } = data
-      )
-      when map_size(round_player_answers) < map_size(active_players_map) do
+      ) do
     round_player_answers = Map.put(round_player_answers, player_id, answer)
     data = %{data | round_player_answers: round_player_answers}
 
-    if map_size(active_players_map) - 1 == map_size(round_player_answers) do
+    if MapSet.size(active_players) - 1 == map_size(round_player_answers) do
       stop_timer(data, :no_response_countdown)
       start_timer(data, :nonexistent_winner_countdown)
       {:next_state, :round_ended, data, [{:next_event, :internal, :broadcast}]}
@@ -218,23 +221,36 @@ defmodule Leafblower.GameStatem do
     :keep_state_and_data
   end
 
+  # enters
+  def handle_event(:enter, :round_started_waiting_for_response, :round_ended, data) do
+    if MapSet.size(data.active_players) == data.round_player_answers do
+      :keep_state_and_data
+    else
+      :keep_state_and_data
+    end
+  end
+
+  def handle_event(:enter, _event, _state, _data) do
+    :keep_state_and_data
+  end
+
   # internal
   def handle_event(:internal, :deal_cards, _state, data) do
-    {white_card, deck} = Leafblower.Deck.take_white_card(data.deck)
+    {black_card, deck} = Leafblower.Deck.take_black_card(data.deck)
 
     {player_cards, deck} =
       if data.round_number == 1 do
-        Leafblower.Deck.deal_black_card(
+        Leafblower.Deck.deal_white_card(
           deck,
           data.active_players,
           data.player_cards,
           7
         )
       else
-        Leafblower.Deck.deal_black_card(deck, data.active_players, data.player_cards, 1)
+        Leafblower.Deck.deal_white_card(deck, data.active_players, data.player_cards, 1)
       end
 
-    {:keep_state, %{data | white_card: white_card, deck: deck, player_cards: player_cards}}
+    {:keep_state, %{data | black_card: black_card, deck: deck, player_cards: player_cards}}
   end
 
   def handle_event(:internal, :broadcast, status, data) do

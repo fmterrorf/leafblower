@@ -45,9 +45,9 @@ defmodule Leafblower.Deck do
   @doc """
   Deals black card to players
   """
-  def deal_black_card(deck, player_ids, player_cards, cards_per_player) do
+  def deal_white_card(deck, player_ids, player_cards, cards_per_player) do
     player_count = MapSet.size(player_ids)
-    new_cards = Enum.take_random(deck.black, player_count * cards_per_player)
+    new_cards = Enum.take_random(deck.white, player_count * cards_per_player)
 
     player_cards =
       player_ids
@@ -58,12 +58,12 @@ defmodule Leafblower.Deck do
 
     {
       player_cards,
-      %{deck | black: MapSet.difference(deck.black, MapSet.new(new_cards))}
+      %{deck | white: MapSet.difference(deck.white, MapSet.new(new_cards))}
     }
   end
 
-  def take_white_card(deck) do
-    taken_card = Enum.take(deck.white, 1)
+  def take_black_card(deck) do
+    [taken_card] = Enum.take(deck.black, 1)
     white = MapSet.delete(deck.white, taken_card)
     {taken_card, %{deck | white: white}}
   end

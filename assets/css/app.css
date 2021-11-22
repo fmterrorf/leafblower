@@ -94,20 +94,19 @@
 .card {
   /* Card Sizing */
   width: 2.5in;
-  height: 3in;
-  border-radius: .25in;
-  margin: 10px;
+  min-height: 2in;
+  max-height: 2.5in;
+  border-radius: .15in;
+  margin: 5px;
 }
 
 .dark {
-  /* Color information */
   border: 3px solid black;
   color: white;
   background: black;
 }
 
 .light {
-  /* Color information */
   border: 3px solid black;
   color: black;
   background: white;
@@ -132,13 +131,14 @@
 
 @media (max-width: 576px) { /* Small devices (landscape phones, 576px and up) */
     .card-container { 
-      scroll-snap-type: y mandatory;
+      scroll-snap-type: x mandatory;
       overflow-x: auto;
       flex-wrap: nowrap;
+      justify-content: unset;
     }
 
     .card-container > * {
       flex-shrink: 0;
-      scroll-snap-align: center;
+      scroll-snap-align: start;
     }
 }
