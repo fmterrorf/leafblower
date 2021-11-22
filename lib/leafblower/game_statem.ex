@@ -126,13 +126,10 @@ defmodule Leafblower.GameStatem do
         {:start_round, player_id},
         status,
         %{
-          active_players: %MapSet{map: player_map},
-          leader_player_id: player_id,
-          min_player_count: min_player_count
+          leader_player_id: player_id
         } = data
       )
-      when map_size(player_map) >= min_player_count and
-             status in [:waiting_for_players, :round_ended, :show_winner] do
+      when status in [:waiting_for_players, :round_ended, :show_winner] do
     start_timer(data, :no_response_countdown)
 
     data = %{
