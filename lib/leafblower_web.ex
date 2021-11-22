@@ -51,6 +51,15 @@ defmodule LeafblowerWeb do
     end
   end
 
+  def live_view_ingame do
+    quote do
+      use Phoenix.LiveView,
+        layout: {LeafblowerWeb.LayoutView, "ingame-root.html"}
+
+      unquote(view_helpers())
+    end
+  end
+
   def live_component do
     quote do
       use Phoenix.LiveComponent

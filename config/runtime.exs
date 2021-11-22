@@ -43,12 +43,23 @@ if config_env() == :prod do
     ],
     secret_key_base: secret_key_base
 
+  config :libcluster,
+    topologies: [
+      render: [
+        strategy: Cluster.Strategy.Kubernetes.DNS,
+        config: [
+          service: System.fetch_env!("RENDER_DISCOVERY_SERVICE"),
+          application_name: System.fetch_env!("RENDER_SERVICE_NAME")
+        ]
+      ]
+    ]
+
   # ## Using releases
   #
   # If you are doing OTP releases, you need to instruct Phoenix
   # to start each relevant endpoint:
   #
-  #     config :leafblower, LeafblowerWeb.Endpoint, server: true
+  config :leafblower, LeafblowerWeb.Endpoint, server: true
   #
   # Then you can assemble a release by calling `mix release`.
   # See `mix help release` for more information.

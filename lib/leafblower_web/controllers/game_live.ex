@@ -33,9 +33,11 @@ defmodule LeafblowerWeb.GameLive do
        game_data: data,
        user_id: user_id,
        countdown_left: nil,
-       joined_in_game?: Map.has_key?(data.players, user_id),
+       joined_in_game?: MapSet.member?(data.active_players, user_id),
        is_leader?: data.leader_player_id == user_id
-     )}
+     )
+     |> clear_flash()
+     |> maybe_assign_changeset()}
   end
 
   def do_mount(nil, _params, _session, socket) do
@@ -49,22 +51,61 @@ defmodule LeafblowerWeb.GameLive do
   def handle_info({:game_state_changed, state, data}, socket) do
     socket =
       case state do
-        :round_ended -> assign(socket, countdown_left: nil)
-        _ -> socket
+        :round_ended ->
+          assign(socket, countdown_left: nil)
+
+        _ ->
+          socket
       end
 
-    {:noreply, assign(socket, game_status: state, game_data: data)}
+    {:noreply,
+     assign(socket,
+       game_status: state,
+       game_data: data,
+       is_leader?: data.leader_player_id == socket.assigns.user_id
+     )}
   end
 
-  def handle_info({:ticker_ticked, countdown_left}, socket) do
+  def handle_info({:ticker_ticked, countdown_left}, socket) when countdown_left > 1 do
     {:noreply, assign(socket, countdown_left: countdown_left)}
   end
 
+  def handle_info({:ticker_ticked, _countdown_left}, socket) do
+    {:noreply, assign(socket, countdown_left: nil)}
+  end
+
+  defp maybe_assign_changeset(%{assigns: %{joined_in_game?: false}} = socket) do
+    assign(socket, changeset: cast_user())
+  end
+
+  defp maybe_assign_changeset(socket), do: assign(socket, changeset: nil)
+
+  defp cast_user(params \\ %{}) do
+    {%{}, %{name: :string}}
+    |> Ecto.Changeset.cast(params, [:name])
+    |> Ecto.Changeset.validate_required([:name])
+    |> Ecto.Changeset.validate_length(:name, max: 15)
+  end
+
   @impl true
-  def handle_event("join_game", _value, socket) do
+  def handle_event("join_game", %{"user" => user}, socket) do
     %{game: game, user_id: user_id} = socket.assigns
-    :ok = GameStatem.join_player(game, user_id)
-    {:noreply, assign(socket, joined_in_game?: true)}
+    :ok = GameStatem.join_player(game, user_id, user["name"])
+
+    {:noreply,
+     socket
+     |> clear_flash()
+     |> assign(joined_in_game?: true)}
+  end
+
+  def handle_event("validate_join_game", %{"user" => params}, socket) do
+    {:noreply,
+     assign(socket,
+       changeset:
+         params
+         |> cast_user
+         |> Map.put(:action, :insert)
+     )}
   end
 
   def handle_event("start_round", _value, socket) do
@@ -79,84 +120,10 @@ defmodule LeafblowerWeb.GameLive do
     {:noreply, socket}
   end
 
-  def render_waiting_for_players(players, min_player_count, is_leader?) do
-    assigns = %{
-      disabled: map_size(players) < min_player_count,
-      is_leader?: is_leader?,
-      players: players
-    }
-
-    ~H"""
-    <%= if @is_leader? do%>
-      <button phx-click="start_round" {[disabled: @disabled]}>Start Game</button>
-    <% end %>
-
-    <ul>
-      <%= for {id, player} <- @players do %>
-        <li id={id}><%= player.name %></li>
-      <% end %>
-    </ul>
-    """
-  end
-
-  def render_round_started_waiting_for_response(
-        player_id,
-        players,
-        round_player_answers,
-        countdown_left
-      ) do
-    assigns = %{
-      players: players,
-      round_player_answers: round_player_answers,
-      countdown_left: countdown_left,
-      disabled: Map.has_key?(round_player_answers, player_id)
-    }
-
-    ~H"""
-    <%= if @countdown_left != nil do %>
-      <pre>Countdown: <%= @countdown_left %></pre>
-    <% end %>
-
-    <h3>Choices</h3>
-    <hr />
-    <ul>
-      <li id="answer-a"><button {[disabled: @disabled]} phx-click="submit_answer" phx-value-id="a">a</button></li>
-      <li id="answer-b"><button {[disabled: @disabled]} phx-click="submit_answer" phx-value-id="b">b</button></li>
-      <li id="answer-c"><button {[disabled: @disabled]} phx-click="submit_answer" phx-value-id="c">c</button></li>
-      <li id="answer-d"><button {[disabled: @disabled]} phx-click="submit_answer" phx-value-id="d">d</button></li>
-    </ul>
-
-    <h3>Answers</h3>
-    <hr />
-    <ul>
-      <%= for {id, player} <- @players do %>
-        <li id={id}><%= player.name %> - <%= if Map.has_key?(@round_player_answers, id), do: "✅", else: "⌛"%></li>
-      <% end %>
-    </ul>
-    """
-  end
-
-  def render_round_ended(players, round_player_answers, is_leader?) do
-    assigns = %{
-      players: players,
-      round_player_answers: round_player_answers,
-      is_leader?: is_leader?
-    }
-
-    ~H"""
-    <%= if @is_leader? do%>
-      <button phx-click="start_round">Next round</button>
-    <% end %>
-    <ul>
-      <%= for {id, player} <- @players do %>
-        <%= if Map.has_key?(@round_player_answers, id) do %>
-          <li id={id}><%= "#{player.name} #{@round_player_answers[id]}" %></li>
-        <% else %>
-          <li id={id}><%= player.name %> No answer </li>
-        <% end %>
-      <% end %>
-    </ul>
-    """
+  def handle_event("pick_winner", %{"id" => id}, socket) do
+    %{game: game} = socket.assigns
+    :ok = GameStatem.pick_winner(game, id)
+    {:noreply, socket}
   end
 
   @impl true
@@ -165,7 +132,13 @@ defmodule LeafblowerWeb.GameLive do
   def render(%{joined_in_game?: false} = assigns) do
     ~H"""
     <%= if @game_status == :waiting_for_players do %>
-      <button phx-click="join_game">Join Game</button>
+      <.form let={f} for={@changeset} phx-change="validate_join_game" phx-submit="join_game" as="user">
+        <%= label f, :name %>
+        <%= text_input f, :name %>
+        <%= error_tag f, :name %>
+
+        <%= submit "Join Game", [disabled: length(@changeset.errors) > 0] %>
+      </.form>
     <% else %>
       <h3>Game has started<h3>
     <% end %>
@@ -175,23 +148,202 @@ defmodule LeafblowerWeb.GameLive do
   def render(assigns) do
     ~H"""
     <pre><%= Atom.to_string(@game_status) %></pre>
+    <%= if @countdown_left != nil do %>
+      <pre id="countdown">Countdown: <%= @countdown_left %></pre>
+    <% end %>
 
     <%= case @game_status do
       :waiting_for_players -> render_waiting_for_players(
-        @game_data.players,
+        @game_data.active_players,
         @game_data.min_player_count,
+        @game_data.player_info,
         @is_leader?)
       :round_started_waiting_for_response -> render_round_started_waiting_for_response(
         @user_id,
-        @game_data.players,
+        @game_data.active_players,
         @game_data.round_player_answers,
-        @countdown_left)
-      :round_ended -> render_round_ended(
-        @game_data.players,
-        @game_data.round_player_answers,
+        @game_data.leader_player_id,
+        @game_data.player_cards[@user_id],
+        @game_data.black_card,
+        @game_data.player_info,
         @is_leader?)
+      :round_ended -> render_round_ended(
+        @game_data.active_players,
+        @game_data.round_player_answers,
+        @game_data.player_info,
+        @is_leader?)
+      :show_winner -> render_winner(
+        @game_data.player_info[@game_data.winner_player_id],
+        @game_data.player_score,
+        @game_data.player_info,
+        @is_leader?
+      )
       _ -> ""
     end %>
+    """
+  end
+
+  defp render_waiting_for_players(active_players, min_player_count, player_info, is_leader?) do
+    active_players_size = MapSet.size(active_players)
+
+    assigns = %{
+      disabled: active_players_size < min_player_count,
+      is_leader?: is_leader?,
+      active_players: active_players,
+      player_info: player_info
+    }
+
+    ~H"""
+    <%= if @is_leader? do%>
+      <button phx-click="start_round" {[disabled: @disabled]}>Start Game</button>
+    <% end %>
+
+    <ul>
+      <%= for player <- Enum.map(@active_players, fn id -> @player_info[id] end) do %>
+        <li id={player.id}><%= player.name %></li>
+      <% end %>
+    </ul>
+    """
+  end
+
+  defp render_round_started_waiting_for_response(
+         player_id,
+         active_players,
+         round_player_answers,
+         leader_player_id,
+         cards,
+         black_card_id,
+         player_info,
+         is_leader?
+       ) do
+    assigns = %{
+      active_players: active_players,
+      leader_player_id: leader_player_id,
+      round_player_answers: round_player_answers,
+      disabled: Map.has_key?(round_player_answers, player_id),
+      cards: cards,
+      black_card: Leafblower.Deck.card(black_card_id, :black),
+      player_info: player_info,
+      is_leader?: is_leader?
+    }
+
+    ~H"""
+    <div class="container">
+      <div class="row" style="justify-content:center;">
+        <div class="card-container">
+          <div class="card dark">
+            <span class="text"><%= @black_card["text"] %></span>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <%= if !@is_leader? do%>
+          <ul class="card-container">
+          <%= for id <- @cards, card = Leafblower.Deck.card(id, :white) do %>
+            <li id={card["id"]} class="card light" phx-click="submit_answer" phx-value-id={card["id"]}>
+              <span class="text"><%= card["text"] %></span>
+            </li>
+          <% end %>
+          </ul>
+        <% else %>
+          <p>Players are picking their answers. Please wait</p>
+        <% end %>
+      </div>
+      <hr />
+      <div class="row">
+        <ul>
+          <%= for player <- Enum.map(@active_players, fn id -> @player_info[id] end) do %>
+            <%= if player.id == @leader_player_id do %>
+              <li id={player.id}><%= player.name %> - 👑</li>
+            <% else %>
+              <li id={player.id}><%= player.name %> - <%= if Map.has_key?(@round_player_answers, player.id), do: "✅", else: "⌛"%></li>
+            <% end %>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+    """
+  end
+
+  defp render_round_ended(active_players, round_player_answers, player_info, is_leader?) do
+    assigns = %{
+      active_players: active_players,
+      round_player_answers: round_player_answers,
+      has_answers?: Map.values(round_player_answers) |> Enum.any?(),
+      player_info: player_info,
+      is_leader?: is_leader?
+    }
+
+    ~H"""
+    <div class="container">
+      <%= if @is_leader? do%>
+      <h3>Pick a winner</h3>
+      <%= if @has_answers? do %>
+        <ul class="card-container">
+          <%= for player <- Enum.map(@active_players, fn id -> @player_info[id] end),
+                  card = Leafblower.Deck.card(@round_player_answers[player.id], :white) do %>
+            <%= if Map.has_key?(@round_player_answers, player.id) do %>
+              <li class="card light" phx-click="pick_winner" phx-value-id={player.id} id={player.id}>
+                <span class="text">
+                  <%= card["text"] %>
+                </span>
+              </li>
+            <% end %>
+          <% end %>
+        </ul>
+        <% else %>
+          <button phx-click="start_round" >Start Next Round</button>
+        <% end %>
+      <% else %>
+      <ul class="card-container">
+          <%= for player <- Enum.map(@active_players, fn id -> @player_info[id] end),
+                  card = Leafblower.Deck.card(@round_player_answers[player.id], :white) do %>
+            <%= if Map.has_key?(@round_player_answers, player.id) do %>
+              <li class="card light" id={player.id}>
+                <span class="text">
+                  <%= card["text"] %>
+                </span>
+              </li>
+            <% end %>
+          <% end %>
+        </ul>
+      <% end %>
+    </div>
+    """
+  end
+
+  defp render_winner(winner_player, player_score, player_info, is_leader?) do
+    assigns = %{
+      is_leader?: is_leader?,
+      winner_player: winner_player,
+      player_score: player_score,
+      player_info: player_info
+    }
+
+    ~H"""
+    <p>And the winner for this round is <b> <%= @winner_player.name %> </b> 🎉🎉🎉 </p>
+    <%= if @is_leader? do%>
+      <button phx-click="start_round" >Start Next Round</button>
+    <% end %>
+
+    <%= render_leader_board(player_info, player_score) %>
+    """
+  end
+
+  defp render_leader_board(player_info, player_score) do
+    assigns = %{
+      sorted_score: Enum.sort(player_score, fn {_, left}, {_, right} -> left > right end),
+      player_info: player_info
+    }
+
+    ~H"""
+    <div class="row">
+      <ul>
+        <%= for {player_id, score} <- @sorted_score do %>
+            <li id={player_id}><%=  player_info[player_id].name %> - <%= score %></li>
+        <% end %>
+      </ul>
+    </div>
     """
   end
 end

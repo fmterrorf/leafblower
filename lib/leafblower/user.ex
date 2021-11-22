@@ -1,16 +1,8 @@
-defmodule Leafblower.User do
-  defstruct [:id, :name]
-
-  @type t :: %__MODULE__{
-          id: binary(),
-          name: binary()
-        }
-
-  defmodule Name do
-    @moduledoc """
-    Taken from this [gist](https://gist.github.com/coryodaniel/d5e8fa15b3d1fe566b3c3f821225936e)
-    """
-    @adjectives ~w(
+defmodule Leafblower.Name do
+  @moduledoc """
+  Taken from this [gist](https://gist.github.com/coryodaniel/d5e8fa15b3d1fe566b3c3f821225936e)
+  """
+  @adjectives ~w(
     autumn hidden bitter misty silent empty dry dark summer
     icy delicate quiet white cool spring winter patient
     twilight dawn crimson wispy weathered blue billowing
@@ -21,7 +13,7 @@ defmodule Leafblower.User do
     restless divine polished ancient purple lively nameless
   )
 
-    @nouns ~w(
+  @nouns ~w(
     waterfall river breeze moon rain wind sea morning
     snow lake sunset pine shadow leaf dawn glitter forest
     hill cloud meadow sun glade bird brook butterfly
@@ -32,25 +24,47 @@ defmodule Leafblower.User do
     frost voice paper frog smoke star hamster
   )
 
-    def generate() do
-      adjective = @adjectives |> Enum.random()
-      noun = @nouns |> Enum.random()
-      [adjective, noun] |> Enum.join("-")
+  def generate() do
+    adjective = @adjectives |> Enum.random()
+    noun = @nouns |> Enum.random()
+    [adjective, noun] |> Enum.join("-")
+  end
+end
+
+defmodule Leafblower.UserServer do
+  use GenServer
+
+  def child_spec(init_arg) do
+    %{
+      id: "#{__MODULE__}-#{Keyword.fetch!(init_arg, :id)}",
+      start: {__MODULE__, :start_link, [init_arg]},
+      restart: :transient,
+      shutdown: 10_000
+    }
+  end
+
+  def get_state(server) do
+    GenServer.call(server, :get_state)
+  end
+
+  def start_link(init_arg) do
+    case GenServer.start_link(__MODULE__, init_arg, name: via_tuple(Keyword.fetch!(init_arg, :id))) do
+      {:ok, pid} -> {:ok, pid}
+      {:error, {:already_started, _pid}} -> :ignore
     end
   end
 
-  @spec new :: t
-  def new() do
-    user = %__MODULE__{
-      name: Name.generate(),
-      id: "user:" <> Ecto.UUID.generate()
-    }
+  def via_tuple(id), do: Leafblower.ProcessRegistry.via_tuple({__MODULE__, id})
 
-    Leafblower.ETSKv.put(user.id, user)
-    user
+  @impl true
+  def init(init_arg) do
+    id = Keyword.fetch!(init_arg, :id)
+    name = Keyword.fetch!(init_arg, :name)
+    {:ok, %{id: id, name: name}}
   end
 
-  def get(id) do
-    Leafblower.ETSKv.get(id)
+  @impl true
+  def handle_call(:get_state, _from, state) do
+    {:reply, state, state}
   end
 end
