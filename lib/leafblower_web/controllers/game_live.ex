@@ -224,7 +224,9 @@ defmodule LeafblowerWeb.GameLive do
       cards: cards,
       black_card: Leafblower.Deck.card(black_card_id, :black),
       player_info: player_info,
-      is_leader?: is_leader?
+      is_leader?: is_leader?,
+      player_id: player_id,
+      has_answered?: round_player_answers[player_id] != nil
     }
 
     ~H"""
@@ -238,13 +240,23 @@ defmodule LeafblowerWeb.GameLive do
       </div>
       <div class="row">
         <%= if !@is_leader? do%>
-          <ul class="card-container">
-          <%= for id <- @cards, card = Leafblower.Deck.card(id, :white) do %>
-            <li id={card["id"]} class="card light" phx-click="submit_answer" phx-value-id={card["id"]}>
-              <span class="text"><%= card["text"] %></span>
-            </li>
+          <%= if @has_answered? do %>
+            <p>You picked </p>
+            <br />
+          <div class="card-container">
+          <div class="card light">
+            <span class="text"><%= Leafblower.Deck.card(@round_player_answers[@player_id], :white)["text"] %></span>
+          </div>
+        </div>
+          <% else %>
+            <ul class="card-container">
+            <%= for id <- @cards, card = Leafblower.Deck.card(id, :white) do %>
+              <li id={card["id"]} class="card light" phx-click="submit_answer" phx-value-id={card["id"]}>
+                <span class="text"><%= card["text"] %></span>
+              </li>
+            <% end %>
+            </ul>
           <% end %>
-          </ul>
         <% else %>
           <p>Players are picking their answers. Please wait</p>
         <% end %>
