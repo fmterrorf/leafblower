@@ -43,14 +43,21 @@ if config_env() == :prod do
     ],
     secret_key_base: secret_key_base
 
+  # config :libcluster,
+  #   topologies: [
+  #     render: [
+  #       strategy: Cluster.Strategy.Kubernetes.DNS,
+  #       config: [
+  #         service: System.fetch_env!("RENDER_DISCOVERY_SERVICE"),
+  #         application_name: System.fetch_env!("RENDER_SERVICE_NAME")
+  #       ]
+  #     ]
+  #   ]
+
   config :libcluster,
     topologies: [
-      render: [
-        strategy: Cluster.Strategy.Kubernetes.DNS,
-        config: [
-          service: System.fetch_env!("RENDER_DISCOVERY_SERVICE"),
-          application_name: System.fetch_env!("RENDER_SERVICE_NAME")
-        ]
+      leafblower: [
+        strategy: Elixir.Cluster.Strategy.Gossip
       ]
     ]
 
