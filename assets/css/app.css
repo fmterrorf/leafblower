@@ -92,7 +92,6 @@
 
 /* Card */
 .card {
-  /* Card Sizing */
   width: 2.5in;
   min-height: 2in;
   max-height: 2.5in;
@@ -104,6 +103,10 @@
   border: 3px solid black;
   color: white;
   background: black;
+}
+
+.pointer {
+  cursor: pointer;
 }
 
 .light {
