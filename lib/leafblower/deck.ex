@@ -40,7 +40,13 @@ defmodule Leafblower.Deck do
   @all_black_cards Leafblower.Deck.Helpers.flatten_cards(@cards, :black)
   @all_white_cards Leafblower.Deck.Helpers.flatten_cards(@cards, :white)
   @card_ids_by_card_pack Leafblower.Deck.Helpers.card_ids_by_card_pack(@cards)
-  @type t :: %{white: MapSet.t(binary()), black: MapSet.t(binary())}
+  @type card_set :: MapSet.t(binary())
+  @type t :: %{black: card_set(), white: card_set()}
+
+  @spec new(card_set(), card_set()) :: t()
+  def new(black, white) do
+    %{black: black, white: white}
+  end
 
   @doc """
   Deals black card to players

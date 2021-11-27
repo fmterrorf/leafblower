@@ -8,6 +8,7 @@ defmodule Leafblower.Application do
   @impl true
   def start(_type, _args) do
     topologies = Application.get_env(:libcluster, :topologies) || []
+
     children = [
       # Start the Telemetry supervisor
       LeafblowerWeb.Telemetry,

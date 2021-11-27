@@ -14,6 +14,6 @@ defmodule Leafblower.ProcessRegistry do
   end
 
   def init(options) do
-   Horde.Registry.init(options)
+    Horde.Registry.init(options)
   end
 end

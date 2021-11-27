@@ -167,10 +167,13 @@ defmodule Leafblower.GameStatem do
           round_player_answers: round_player_answers
         } = data
       ) do
-    round_player_answers = Map.put(round_player_answers, player_id, answer)
-    data = %{data | round_player_answers: round_player_answers}
+    data = %{
+      data
+      | round_player_answers: Map.put(round_player_answers, player_id, answer),
+        player_cards: update_in(data, [:player_cards, player_id], &Map.delete(&1, answer))
+    }
 
-    if MapSet.size(active_players) - 1 == map_size(round_player_answers) do
+    if MapSet.size(active_players) - 1 == map_size(data.round_player_answers) do
       stop_timer(data, :no_response_countdown)
       start_timer(data, :nonexistent_winner_countdown)
       {:next_state, :round_ended, data, [{:next_event, :internal, :broadcast}]}

@@ -280,7 +280,13 @@ defmodule LeafblowerWeb.GameLive do
     """
   end
 
-  defp render_round_ended(active_players, round_player_answers, player_info, black_card_id, is_leader?) do
+  defp render_round_ended(
+         active_players,
+         round_player_answers,
+         player_info,
+         black_card_id,
+         is_leader?
+       ) do
     assigns = %{
       active_players: active_players,
       round_player_answers: round_player_answers,
