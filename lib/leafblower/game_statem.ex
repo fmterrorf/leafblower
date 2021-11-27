@@ -1,6 +1,6 @@
 defmodule Leafblower.GameStatem do
   use GenStateMachine, callback_mode: [:handle_event_function, :state_enter]
-  alias Leafblower.{GameTicker, ProcessRegistry}
+  alias Leafblower.{GameTicker, ProcessRegistry, Deck}
 
   @type player_id :: binary()
 
@@ -10,19 +10,19 @@ defmodule Leafblower.GameStatem do
 
   @type data :: %{
           id: binary(),
-          active_players: MapSet.t(),
+          active_players: MapSet.t(player_id()),
           player_info: player_info(),
           round_number: non_neg_integer(),
-          round_player_answers: %{player_id() => binary()},
+          round_player_answers: %{player_id() => Deck.card()},
           leader_player_id: player_id() | nil,
           winner_player_id: player_id() | nil,
           min_player_count: non_neg_integer(),
           countdown_duration: non_neg_integer(),
           player_score: %{player_id() => non_neg_integer()},
-          deck: Leafblower.Deck.t(),
-          player_cards: %{player_id() => MapSet.t(binary())},
-          black_card: binary() | nil,
-          discard_pile: MapSet.t()
+          deck: Deck.t(),
+          player_cards: %{player_id() => Deck.card_set()},
+          black_card: Deck.card(),
+          discard_pile: Deck.card_set()
         }
 
   def child_spec(init_arg) do
