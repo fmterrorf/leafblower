@@ -172,6 +172,7 @@ defmodule LeafblowerWeb.GameLive do
         @game_data.round_player_answers,
         @game_data.player_info,
         @game_data.black_card,
+        @game_data.leader_player_id,
         @is_leader?)
       :show_winner -> render_winner(
         @game_data.player_info[@game_data.winner_player_id],
@@ -296,6 +297,7 @@ defmodule LeafblowerWeb.GameLive do
          round_player_answers,
          player_info,
          black_card_id,
+         leader_player_id,
          is_leader?
        ) do
     assigns = %{
@@ -304,11 +306,12 @@ defmodule LeafblowerWeb.GameLive do
       has_answers?: Map.values(round_player_answers) |> Enum.any?(),
       player_info: player_info,
       black_card: Leafblower.Deck.card(black_card_id, :black),
+      leader: player_info[leader_player_id],
       is_leader?: is_leader?
     }
 
     ~H"""
-    <div class="container">
+    <div>
       <%= if @is_leader? do%>
       <div class="row" style="justify-content:center;">
         <div class="card-container">
@@ -318,8 +321,7 @@ defmodule LeafblowerWeb.GameLive do
         </div>
       </div>
       <%= if @has_answers? do %>
-        <hr/>
-        <b>Pick a winner</b>
+        <h4>Pick a winner</h4>
         <ul class="card-container">
           <%= for player <- Enum.map(@active_players, fn id -> @player_info[id] end),
                   card = Leafblower.Deck.card(@round_player_answers[player.id], :white) do %>
@@ -336,6 +338,7 @@ defmodule LeafblowerWeb.GameLive do
           <button phx-click="start_round" >Start Next Round</button>
         <% end %>
       <% else %>
+      <pre>Waiting for <b><%= @leader.name %></b> 👑 to a pick a winner</pre>
       <ul class="card-container">
           <%= for player <- Enum.map(@active_players, fn id -> @player_info[id] end),
                   card = Leafblower.Deck.card(@round_player_answers[player.id], :white) do %>
