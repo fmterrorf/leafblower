@@ -175,6 +175,7 @@ defmodule LeafblowerWeb.GameLive do
         @game_data.leader_player_id,
         @is_leader?)
       :show_winner -> render_winner(
+        @game_data.round_player_answers[@game_data.winner_player_id],
         @game_data.player_info[@game_data.winner_player_id],
         @game_data.player_score,
         @game_data.player_info,
@@ -356,16 +357,23 @@ defmodule LeafblowerWeb.GameLive do
     """
   end
 
-  defp render_winner(winner_player, player_score, player_info, is_leader?) do
+  defp render_winner(winner_card, winner_player, player_score, player_info, is_leader?) do
     assigns = %{
       is_leader?: is_leader?,
       winner_player: winner_player,
       player_score: player_score,
-      player_info: player_info
+      player_info: player_info,
+      winner_card: winner_card
     }
+    IO.inspect(winner_card)
 
     ~H"""
     <p>And the winner for this round is <b> <%= @winner_player.name %> </b> 🎉🎉🎉 </p>
+    <div class="card-container">
+      <div class="card light">
+        <span class="text"><%= Leafblower.Deck.card(winner_card, :white)["text"] %></span>
+      </div>
+    </div>
     <%= if @is_leader? do%>
       <button phx-click="start_round" >Start Next Round</button>
     <% end %>
