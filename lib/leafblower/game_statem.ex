@@ -3,11 +3,8 @@ defmodule Leafblower.GameStatem do
   alias Leafblower.{GameTicker, ProcessRegistry, Deck}
 
   @type player_id :: binary()
-
   @type player_info :: %{player_id() => %{name: binary()}}
-
   @type status :: :waiting_for_players | :round_started_waiting_for_response | :round_ended
-
   @type data :: %{
           id: binary(),
           active_players: MapSet.t(player_id()),
