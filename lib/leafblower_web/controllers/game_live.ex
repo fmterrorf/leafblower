@@ -185,7 +185,13 @@ defmodule LeafblowerWeb.GameLive do
     """
   end
 
-  defp render_waiting_for_players(game_id, active_players, min_player_count, player_info, is_leader?) do
+  defp render_waiting_for_players(
+         game_id,
+         active_players,
+         min_player_count,
+         player_info,
+         is_leader?
+       ) do
     active_players_size = MapSet.size(active_players)
 
     assigns = %{

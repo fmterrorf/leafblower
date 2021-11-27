@@ -16,7 +16,6 @@ defmodule Leafblower.Application do
       {Cluster.Supervisor, [topologies, [name: Leafblower.ClusterSupervisor]]},
       Leafblower.GameSupervisor,
       Leafblower.ProcessRegistry,
-      Leafblower.ETSKv,
       # Start the PubSub system
       {Phoenix.PubSub, name: Leafblower.PubSub},
       # Start the Endpoint (http/https)
