@@ -22,12 +22,10 @@ defmodule LeafblowerWeb.Router do
   scope "/", LeafblowerWeb do
     pipe_through :browser
 
-    live "/", GameSplashLive
-
-    scope "/:id" do
-      # pipe_through :ingame
-      live "/", GameLive
-    end
+    live "/", GameSplashLive, :index
+    live "/join", GameSplashLive, :join_by_code
+    live "/start", GameSplashLive, :start_game
+    live "/:id", GameLive
   end
 
   # Other scopes may use custom stacks.
