@@ -105,7 +105,6 @@ defmodule LeafblowerWeb.GameSplashLive do
         <p>Play Cards Against Humanity online</p>
       </div>
     </div>
-    <hr />
     <div class="row">
       <div>
         <%= live_patch to: Routes.game_splash_path(@socket, :start_game) do%>

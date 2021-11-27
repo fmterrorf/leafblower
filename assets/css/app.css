@@ -151,14 +151,13 @@ header {
   padding-bottom: 0.5em;
 }
 
-footer {
-  position: absolute;
-  bottom: 0;
-  width: 100%;
-  font-size: 0.75em;
+footer { 
+  margin-top: 2em;
+  font-weight: 600;
+  color: #43484b;
+  font-size: 0.7em;
 }
 
-html, body { 
-  padding: 0;
-  margin: 0;
+html { 
+  background-color: #f7fafc;
 }

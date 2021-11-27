@@ -9,7 +9,7 @@
     <link phx-track-static rel="stylesheet" href={Routes.static_path(@conn, "/assets/app.css")}/>
     <script defer phx-track-static type="text/javascript" src={Routes.static_path(@conn, "/assets/app.js")}></script>
   </head>
-  <body style="height: 100%">
+  <body>
     <header>
       <section class="container">
         <nav>
@@ -23,10 +23,10 @@
     </header>
     <%= @inner_content %> 
     <footer>
-      <div class="container" style="padding-bottom: 0.5em; padding-top: 0.5em; border-top: 0.1rem solid #f4f5f6">
+      <div class="container">
         <span>See source in <a href="https://github.com/fmterrorf/leafblower">Github</a></span> | 
         <span>Made by <a href="https://github.com/fmterrorf">@fmterrorf</a></span>
       </div>
-    </footer>
+      </footer>
   </body>
 </html>
