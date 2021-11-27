@@ -1,6 +1,6 @@
 defmodule LeafblowerWeb.GameLive do
   use LeafblowerWeb, :live_view
-  alias Leafblower.{GameStatem, GameCache, GameTicker}
+  alias Leafblower.{GameStatem, GameSupervisor, GameTicker}
 
   @type assigns :: %{
           game: pid(),
@@ -14,7 +14,7 @@ defmodule LeafblowerWeb.GameLive do
 
   @impl true
   def mount(params, session, socket) do
-    GameCache.find_game(params["id"])
+    GameSupervisor.find_game(params["id"])
     |> do_mount(params, session, socket)
   end
 
@@ -154,6 +154,7 @@ defmodule LeafblowerWeb.GameLive do
 
     <%= case @game_status do
       :waiting_for_players -> render_waiting_for_players(
+        @game_data.id,
         @game_data.active_players,
         @game_data.min_player_count,
         @game_data.player_info,
@@ -171,6 +172,7 @@ defmodule LeafblowerWeb.GameLive do
         @game_data.active_players,
         @game_data.round_player_answers,
         @game_data.player_info,
+        @game_data.black_card,
         @is_leader?)
       :show_winner -> render_winner(
         @game_data.player_info[@game_data.winner_player_id],
@@ -183,10 +185,11 @@ defmodule LeafblowerWeb.GameLive do
     """
   end
 
-  defp render_waiting_for_players(active_players, min_player_count, player_info, is_leader?) do
+  defp render_waiting_for_players(game_id, active_players, min_player_count, player_info, is_leader?) do
     active_players_size = MapSet.size(active_players)
 
     assigns = %{
+      game_id: game_id,
       disabled: active_players_size < min_player_count,
       is_leader?: is_leader?,
       active_players: active_players,
@@ -194,6 +197,7 @@ defmodule LeafblowerWeb.GameLive do
     }
 
     ~H"""
+    <pre>Game code: <%= @game_id %></pre>
     <%= if @is_leader? do%>
       <button phx-click="start_round" {[disabled: @disabled]}>Start Game</button>
     <% end %>
@@ -224,7 +228,9 @@ defmodule LeafblowerWeb.GameLive do
       cards: cards,
       black_card: Leafblower.Deck.card(black_card_id, :black),
       player_info: player_info,
-      is_leader?: is_leader?
+      is_leader?: is_leader?,
+      player_id: player_id,
+      has_answered?: round_player_answers[player_id] != nil
     }
 
     ~H"""
@@ -238,18 +244,30 @@ defmodule LeafblowerWeb.GameLive do
       </div>
       <div class="row">
         <%= if !@is_leader? do%>
-          <ul class="card-container">
-          <%= for id <- @cards, card = Leafblower.Deck.card(id, :white) do %>
-            <li id={card["id"]} class="card light" phx-click="submit_answer" phx-value-id={card["id"]}>
-              <span class="text"><%= card["text"] %></span>
-            </li>
+          <%= if @has_answered? do %>
+            <p>You picked </p>
+            <br />
+          <div class="card-container">
+            <div class="card light">
+              <span class="text"><%= Leafblower.Deck.card(@round_player_answers[@player_id], :white)["text"] %></span>
+            </div>
+          </div>
+          <% else %>
+            <ul class="card-container">
+            <%= for id <- @cards, card = Leafblower.Deck.card(id, :white) do %>
+              <li id={card["id"]} class="card light pointer" phx-click="submit_answer" phx-value-id={card["id"]}>
+                <span class="text"><%= card["text"] %></span>
+              </li>
+            <% end %>
+            </ul>
           <% end %>
-          </ul>
         <% else %>
-          <p>Players are picking their answers. Please wait</p>
+          <div>
+            <hr/>
+            <p>Players are picking their answers. Please wait</p>
+          </div>
         <% end %>
       </div>
-      <hr />
       <div class="row">
         <ul>
           <%= for player <- Enum.map(@active_players, fn id -> @player_info[id] end) do %>
@@ -265,20 +283,35 @@ defmodule LeafblowerWeb.GameLive do
     """
   end
 
-  defp render_round_ended(active_players, round_player_answers, player_info, is_leader?) do
+  defp render_round_ended(
+         active_players,
+         round_player_answers,
+         player_info,
+         black_card_id,
+         is_leader?
+       ) do
     assigns = %{
       active_players: active_players,
       round_player_answers: round_player_answers,
       has_answers?: Map.values(round_player_answers) |> Enum.any?(),
       player_info: player_info,
+      black_card: Leafblower.Deck.card(black_card_id, :black),
       is_leader?: is_leader?
     }
 
     ~H"""
     <div class="container">
       <%= if @is_leader? do%>
-      <h3>Pick a winner</h3>
+      <div class="row" style="justify-content:center;">
+        <div class="card-container">
+          <div class="card dark">
+            <span class="text"><%= @black_card["text"] %></span>
+          </div>
+        </div>
+      </div>
       <%= if @has_answers? do %>
+        <hr/>
+        <b>Pick a winner</b>
         <ul class="card-container">
           <%= for player <- Enum.map(@active_players, fn id -> @player_info[id] end),
                   card = Leafblower.Deck.card(@round_player_answers[player.id], :white) do %>

@@ -93,7 +93,7 @@ defmodule Leafblower.GameTicker do
   def handle_info(:tick, %GameTicker{id: id} = state) do
     state = %GameTicker{state | timer_ref: nil}
 
-    Leafblower.GameCache.find_game(id)
+    Leafblower.GameSupervisor.find_game(id)
     |> send({:timer_end, state.action_meta})
 
     {:noreply, state}

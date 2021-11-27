@@ -4,5 +4,4 @@ defmodule Mix.Tasks.GenerateKeyedCards do
   def run(_) do
     Leafblower.Deck.card_packs() |> IO.inspect()
   end
-
 end

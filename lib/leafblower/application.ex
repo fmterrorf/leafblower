@@ -8,13 +8,13 @@ defmodule Leafblower.Application do
   @impl true
   def start(_type, _args) do
     topologies = Application.get_env(:libcluster, :topologies) || []
+
     children = [
       # Start the Telemetry supervisor
       LeafblowerWeb.Telemetry,
       # {Horde.Registry, [name: Leafblower.GameRegistry, keys: :unique, members: :auto]},
       {Cluster.Supervisor, [topologies, [name: Leafblower.ClusterSupervisor]]},
-      Leafblower.GameCache,
-      Leafblower.UserSupervisor,
+      Leafblower.GameSupervisor,
       Leafblower.ProcessRegistry,
       Leafblower.ETSKv,
       # Start the PubSub system

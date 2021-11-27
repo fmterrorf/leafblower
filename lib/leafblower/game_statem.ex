@@ -2,22 +2,25 @@ defmodule Leafblower.GameStatem do
   use GenStateMachine, callback_mode: [:handle_event_function, :state_enter]
   alias Leafblower.{GameTicker, ProcessRegistry}
 
+  @type player_id :: binary()
+
+  @type player_info :: %{player_id() => %{name: binary()}}
+
   @type status :: :waiting_for_players | :round_started_waiting_for_response | :round_ended
 
   @type data :: %{
           id: binary(),
           active_players: MapSet.t(),
-          # player_info -> player_id: %{name: string}
-          player_info: map(),
+          player_info: player_info(),
           round_number: non_neg_integer(),
-          round_player_answers: %{binary() => any()},
-          leader_player_id: binary() | nil,
-          winner_player_id: binary() | nil,
+          round_player_answers: %{player_id() => binary()},
+          leader_player_id: player_id() | nil,
+          winner_player_id: player_id() | nil,
           min_player_count: non_neg_integer(),
           countdown_duration: non_neg_integer(),
-          player_score: %{binary() => non_neg_integer()},
+          player_score: %{player_id() => non_neg_integer()},
           deck: Leafblower.Deck.t(),
-          player_cards: %{binary() => MapSet.t(binary())},
+          player_cards: %{player_id() => MapSet.t(binary())},
           black_card: binary() | nil,
           discard_pile: MapSet.t()
         }
@@ -159,15 +162,15 @@ defmodule Leafblower.GameStatem do
         :cast,
         {:submit_answer, player_id, answer},
         :round_started_waiting_for_response,
-        %{
-          active_players: active_players,
-          round_player_answers: round_player_answers
-        } = data
+        %{round_player_answers: round_player_answers} = data
       ) do
-    round_player_answers = Map.put(round_player_answers, player_id, answer)
-    data = %{data | round_player_answers: round_player_answers}
+    data = %{
+      data
+      | round_player_answers: Map.put(round_player_answers, player_id, answer),
+        player_cards: Map.update!(data.player_cards, player_id, &MapSet.delete(&1, answer))
+    }
 
-    if MapSet.size(active_players) - 1 == map_size(round_player_answers) do
+    if all_players_answered?(data) do
       stop_timer(data, :no_response_countdown)
       start_timer(data, :nonexistent_winner_countdown)
       {:next_state, :round_ended, data, [{:next_event, :internal, :broadcast}]}
@@ -220,10 +223,38 @@ defmodule Leafblower.GameStatem do
 
   # enters
   def handle_event(:enter, :round_started_waiting_for_response, :round_ended, data) do
-    if MapSet.size(data.active_players) == data.round_player_answers do
+    if all_players_answered?(data) do
       :keep_state_and_data
     else
-      :keep_state_and_data
+      player_anwered_ids =
+        Map.keys(data.round_player_answers)
+        |> MapSet.new()
+
+      player_without_answer_ids =
+        MapSet.delete(data.active_players, data.leader_player_id)
+        |> MapSet.difference(player_anwered_ids)
+
+      player_id_card_taken_and_cards =
+        for {player_id, cards} <-
+              Map.take(data.player_cards, MapSet.to_list(player_without_answer_ids)) do
+          card_taken = Enum.random(cards)
+          new_cards = MapSet.delete(cards, card_taken)
+          {player_id, card_taken, new_cards}
+        end
+
+      round_player_answers =
+        Enum.into(player_id_card_taken_and_cards, data.round_player_answers, fn {player_id, card,
+                                                                                 _} ->
+          {player_id, card}
+        end)
+
+      player_cards =
+        Enum.into(player_id_card_taken_and_cards, data.player_cards, fn {player_id, _, cards} ->
+          {player_id, cards}
+        end)
+
+      {:keep_state,
+       %{data | round_player_answers: round_player_answers, player_cards: player_cards}}
     end
   end
 
@@ -235,17 +266,7 @@ defmodule Leafblower.GameStatem do
   def handle_event(:internal, :deal_cards, _state, data) do
     {black_card, deck} = Leafblower.Deck.take_black_card(data.deck)
 
-    {player_cards, deck} =
-      if data.round_number == 1 do
-        Leafblower.Deck.deal_white_card(
-          deck,
-          data.active_players,
-          data.player_cards,
-          7
-        )
-      else
-        Leafblower.Deck.deal_white_card(deck, data.active_players, data.player_cards, 1)
-      end
+    {player_cards, deck} = Leafblower.Deck.deal_white_card(deck, data.player_cards)
 
     {:keep_state, %{data | black_card: black_card, deck: deck, player_cards: player_cards}}
   end
@@ -258,6 +279,38 @@ defmodule Leafblower.GameStatem do
     )
 
     :keep_state_and_data
+  end
+
+  def generate_game_code() do
+    # Generate 3 server codes to try. Take the first that is unused.
+    # If no unused ones found, add an error
+    codes = Enum.map(1..3, fn _ -> do_generate_code() end)
+
+    case Enum.find(codes, &(!server_found?(&1))) do
+      nil ->
+        # no unused game code found. Report server busy, try again later.
+        {:error, "Didn't find unused code, try again later"}
+
+      code ->
+        {:ok, code}
+    end
+  end
+
+  defp do_generate_code() do
+    # Generate a single 4 character random code
+    range = ?A..?Z
+
+    1..5
+    |> Enum.map(fn _ -> [Enum.random(range)] |> List.to_string() end)
+    |> Enum.join("")
+  end
+
+  defp server_found?(game_code) do
+    # Look up the game in the registry. Return if a match is found.
+    case Horde.Registry.lookup(Leafblower.ProcessRegistry, game_code) do
+      [] -> false
+      [{pid, _} | _] when is_pid(pid) -> true
+    end
   end
 
   defp start_timer(data, action_meta) do
@@ -301,6 +354,10 @@ defmodule Leafblower.GameStatem do
       rem(Enum.find_index(active_players, &(&1 == leader_player_id)) + 1, length(active_players))
 
     %{data | leader_player_id: Enum.at(active_players, new_idx)}
+  end
+
+  defp all_players_answered?(data) do
+    MapSet.size(data.active_players) - 1 == map_size(data.round_player_answers)
   end
 
   defp topic(id), do: "#{__MODULE__}/#{id}"

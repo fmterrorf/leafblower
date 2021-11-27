@@ -1,4 +1,4 @@
-defmodule Leafblower.GameCache do
+defmodule Leafblower.GameSupervisor do
   use Horde.DynamicSupervisor
   alias Leafblower.{GameStatem, GameTicker}
 
