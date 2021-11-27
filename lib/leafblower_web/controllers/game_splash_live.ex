@@ -105,11 +105,13 @@ defmodule LeafblowerWeb.GameSplashLive do
         <p>Play Cards Against Humanity online</p>
       </div>
     </div>
-
+    <hr />
     <div class="row">
-      <%= live_patch to: Routes.game_splash_path(@socket, :start_game) do%>
-        <button>Start a game</button>
-      <% end %>
+      <div>
+        <%= live_patch to: Routes.game_splash_path(@socket, :start_game) do%>
+          <button>Start a game</button>
+        <% end %>
+      </div>
     </div>
 
     <div class="row" style="padding: 1em;">
@@ -117,9 +119,11 @@ defmodule LeafblowerWeb.GameSplashLive do
     </div>
 
     <div class="row">
-      <%= live_patch to: Routes.game_splash_path(@socket, :join_by_code) do%>
-        <button>Join game</button>
-      <% end %>
+      <div>
+        <%= live_patch to: Routes.game_splash_path(@socket, :join_by_code) do%>
+          <button>Join game</button>
+        <% end %>
+      </div>
     </div>
     """
   end

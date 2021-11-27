@@ -357,7 +357,7 @@ input[type='checkbox'], input[type='radio'] {
 @media (min-width: 40rem) {
   .row {
     flex-direction: row;
-    margin-left: -1.0rem;
+    /* margin-left: -1.0rem; */
     width: calc(100% + 2.0rem)
   }
 
@@ -368,7 +368,7 @@ input[type='checkbox'], input[type='radio'] {
 }
 
 a {
-  color: #000000;
+  color: #0069d9;
   text-decoration: none
 }
 
