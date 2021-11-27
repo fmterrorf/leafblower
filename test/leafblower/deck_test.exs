@@ -12,13 +12,13 @@ defmodule Leafblower.DeckTest do
     {player_cards, deck} =
       Deck.deal_white_card(
         deck,
-        MapSet.new(["player_id1", "player_id2"]),
-        %{"player_id1" => MapSet.new(), "player_id2" => MapSet.new()},
-        2
+        %{"player_id1" => MapSet.new(["z"]), "player_id2" => MapSet.new()},
+        1
       )
+      |> IO.inspect()
 
-    assert MapSet.size(player_cards["player_id1"]) == 2
-    assert MapSet.size(player_cards["player_id2"]) == 2
-    assert MapSet.size(deck.white) == 2
+    assert MapSet.size(player_cards["player_id1"]) == 1
+    assert MapSet.size(player_cards["player_id2"]) == 1
+    assert MapSet.size(deck.white) == 5
   end
 end

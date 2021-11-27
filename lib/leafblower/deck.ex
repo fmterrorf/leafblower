@@ -49,22 +49,32 @@ defmodule Leafblower.Deck do
   end
 
   @doc """
-  Deals black card to players
+  Deals white card to players
   """
-  def deal_white_card(deck, player_ids, player_cards, cards_per_player) do
-    player_count = MapSet.size(player_ids)
-    new_cards = Enum.take_random(deck.white, player_count * cards_per_player)
+  def deal_white_card(deck, player_cards, max_cards_per_player \\ 7) do
+    player_by_needed_cards =
+      for {player_id, cards} <- player_cards,
+          needed_cards = max_cards_per_player - MapSet.size(cards) do
+        {player_id, needed_cards}
+      end
 
-    player_cards =
-      player_ids
-      |> Enum.zip(Enum.chunk_every(new_cards, cards_per_player))
-      |> Enum.reduce(player_cards, fn {key, val}, acc ->
-        Map.update!(acc, key, &MapSet.union(&1, MapSet.new(val)))
+    {cards, white} =
+      Enum.map_reduce(player_by_needed_cards, deck.white, fn {player_id, count}, white ->
+        cards_in_hand = player_cards[player_id]
+
+        if count == 0 do
+          {{player_id, cards_in_hand}, white}
+        else
+          new_cards = Enum.take_random(white, count) |> MapSet.new()
+
+          {{player_id, MapSet.union(new_cards, cards_in_hand)},
+           MapSet.difference(white, new_cards)}
+        end
       end)
 
     {
-      player_cards,
-      %{deck | white: MapSet.difference(deck.white, MapSet.new(new_cards))}
+      Enum.into(cards, %{}),
+      %{deck | white: white}
     }
   end
 

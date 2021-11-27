@@ -162,18 +162,15 @@ defmodule Leafblower.GameStatem do
         :cast,
         {:submit_answer, player_id, answer},
         :round_started_waiting_for_response,
-        %{
-          active_players: active_players,
-          round_player_answers: round_player_answers
-        } = data
+        %{round_player_answers: round_player_answers} = data
       ) do
     data = %{
       data
       | round_player_answers: Map.put(round_player_answers, player_id, answer),
-        player_cards: update_in(data, [:player_cards, player_id], &Map.delete(&1, answer))
+        player_cards: Map.update!(data.player_cards, player_id, &MapSet.delete(&1, answer))
     }
 
-    if MapSet.size(active_players) - 1 == map_size(data.round_player_answers) do
+    if all_players_answered?(data) do
       stop_timer(data, :no_response_countdown)
       start_timer(data, :nonexistent_winner_countdown)
       {:next_state, :round_ended, data, [{:next_event, :internal, :broadcast}]}
@@ -226,10 +223,29 @@ defmodule Leafblower.GameStatem do
 
   # enters
   def handle_event(:enter, :round_started_waiting_for_response, :round_ended, data) do
-    if MapSet.size(data.active_players) == data.round_player_answers do
+    if all_players_answered?(data) do
       :keep_state_and_data
     else
-      :keep_state_and_data
+      player_anwered_ids =
+        Map.keys(data.round_player_answers)
+        |> MapSet.new()
+
+      player_without_answer_ids =
+        MapSet.delete(data.active_players, data.leader_player_id)
+        |> MapSet.difference(player_anwered_ids)
+
+      player_without_answer_cards =
+        Map.take(data.player_cards, MapSet.to_list(player_without_answer_ids))
+
+      # rework
+      {player_cards, deck} =
+        Leafblower.Deck.deal_white_card(
+          data.deck,
+          player_without_answer_cards,
+          7
+        )
+
+      {:keep_state, %{data | player_cards: player_cards, deck: deck}}
     end
   end
 
@@ -241,17 +257,7 @@ defmodule Leafblower.GameStatem do
   def handle_event(:internal, :deal_cards, _state, data) do
     {black_card, deck} = Leafblower.Deck.take_black_card(data.deck)
 
-    {player_cards, deck} =
-      if data.round_number == 1 do
-        Leafblower.Deck.deal_white_card(
-          deck,
-          data.active_players,
-          data.player_cards,
-          7
-        )
-      else
-        Leafblower.Deck.deal_white_card(deck, data.active_players, data.player_cards, 1)
-      end
+    {player_cards, deck} = Leafblower.Deck.deal_white_card(deck, data.player_cards)
 
     {:keep_state, %{data | black_card: black_card, deck: deck, player_cards: player_cards}}
   end
@@ -307,6 +313,10 @@ defmodule Leafblower.GameStatem do
       rem(Enum.find_index(active_players, &(&1 == leader_player_id)) + 1, length(active_players))
 
     %{data | leader_player_id: Enum.at(active_players, new_idx)}
+  end
+
+  defp all_players_answered?(data) do
+    MapSet.size(data.active_players) - 1 == map_size(data.round_player_answers)
   end
 
   defp topic(id), do: "#{__MODULE__}/#{id}"
