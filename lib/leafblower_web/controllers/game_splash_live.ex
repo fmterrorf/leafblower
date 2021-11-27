@@ -65,6 +65,12 @@ defmodule LeafblowerWeb.GameSplashLive do
      |> push_redirect(to: Routes.live_path(socket, LeafblowerWeb.GameLive, code), replace: true)}
   end
 
+  def handle_event("join_by_code", %{"code" => params}, socket) do
+     {:noreply,
+     socket
+     |> push_redirect(to: Routes.live_path(socket, LeafblowerWeb.GameLive, params["code"]), replace: true)}
+  end
+
   @impl true
   def render(%{page: :start_game} = assigns) do
     ~H"""
@@ -84,7 +90,7 @@ defmodule LeafblowerWeb.GameSplashLive do
         <%= text_input f, :code, placeholder: "Enter game code!" %>
         <%= error_tag f, :code %>
 
-        <%= submit "Join game", [disabled: length(@changeset.errors) > 0] %>
+        <%= submit "Find game", [disabled: length(@changeset.errors) > 0] %>
       </.form>
     """
   end
