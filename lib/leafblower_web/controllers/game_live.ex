@@ -244,7 +244,7 @@ defmodule LeafblowerWeb.GameLive do
     }
 
     ~H"""
-    <div class="container">
+
       <div class="row" style="justify-content:center;">
         <div class="card-container">
           <div class="card dark">
@@ -255,11 +255,12 @@ defmodule LeafblowerWeb.GameLive do
       <div class="row">
         <%= if !@is_leader? do%>
           <%= if @has_answered? do %>
-            <p>You picked </p>
-            <br />
-          <div class="card-container">
-            <div class="card light">
-              <span class="text"><%= Leafblower.Deck.card(@round_player_answers[@player_id], :white)["text"] %></span>
+          <div>
+            <b>You picked</b>
+            <div class="card-container">
+              <div class="card light">
+                <span class="text"><%= Leafblower.Deck.card(@round_player_answers[@player_id], :white)["text"] %></span>
+              </div>
             </div>
           </div>
           <% else %>
@@ -279,17 +280,20 @@ defmodule LeafblowerWeb.GameLive do
         <% end %>
       </div>
       <div class="row">
-        <ul>
-          <%= for player <- Enum.map(@active_players, fn id -> @player_info[id] end) do %>
-            <%= if player.id == @leader_player_id do %>
-              <li id={player.id}><%= player.name %> - 👑</li>
-            <% else %>
-              <li id={player.id}><%= player.name %> - <%= if Map.has_key?(@round_player_answers, player.id), do: "✅", else: "⌛"%></li>
+        <div>
+          <b>Players</b>
+          <ul>
+            <%= for player <- Enum.map(@active_players, fn id -> @player_info[id] end) do %>
+              <%= if player.id == @leader_player_id do %>
+                <li id={player.id}><%= player.name %> - 👑</li>
+              <% else %>
+                <li id={player.id}><%= player.name %> - <%= if Map.has_key?(@round_player_answers, player.id), do: "✅", else: "⌛"%></li>
+              <% end %>
             <% end %>
-          <% end %>
-        </ul>
+          </ul>
+        </div>
       </div>
-    </div>
+
     """
   end
 
@@ -365,6 +369,7 @@ defmodule LeafblowerWeb.GameLive do
       player_info: player_info,
       winner_card: winner_card
     }
+
     IO.inspect(winner_card)
 
     ~H"""
