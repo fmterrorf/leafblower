@@ -234,18 +234,27 @@ defmodule Leafblower.GameStatem do
         MapSet.delete(data.active_players, data.leader_player_id)
         |> MapSet.difference(player_anwered_ids)
 
-      player_without_answer_cards =
-        Map.take(data.player_cards, MapSet.to_list(player_without_answer_ids))
+      player_id_card_taken_and_cards =
+        for {player_id, cards} <-
+              Map.take(data.player_cards, MapSet.to_list(player_without_answer_ids)) do
+          card_taken = Enum.random(cards)
+          new_cards = MapSet.delete(cards, card_taken)
+          {player_id, card_taken, new_cards}
+        end
 
-      # rework
-      {player_cards, deck} =
-        Leafblower.Deck.deal_white_card(
-          data.deck,
-          player_without_answer_cards,
-          7
-        )
+      round_player_answers =
+        Enum.into(player_id_card_taken_and_cards, data.round_player_answers, fn {player_id, card,
+                                                                                 _} ->
+          {player_id, card}
+        end)
 
-      {:keep_state, %{data | player_cards: player_cards, deck: deck}}
+      player_cards =
+        Enum.into(player_id_card_taken_and_cards, data.player_cards, fn {player_id, _, cards} ->
+          {player_id, cards}
+        end)
+
+      {:keep_state,
+       %{data | round_player_answers: round_player_answers, player_cards: player_cards}}
     end
   end
 
