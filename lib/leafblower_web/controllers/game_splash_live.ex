@@ -25,7 +25,7 @@ defmodule LeafblowerWeb.GameSplashLive do
       |> Ecto.Changeset.apply_changes()
 
     {:ok, game} =
-      Leafblower.GameSupervisor.new_game(id: code, countdown_duration: 10, min_player_count: 2)
+      Leafblower.GameSupervisor.new_game(id: code, countdown_duration: 120, min_player_count: 2)
 
     Leafblower.GameStatem.join_player(game, socket.assigns.user_id, data.name)
 
