@@ -303,11 +303,7 @@ defmodule Leafblower.GameStatem do
   end
 
   defp server_found?(game_code) do
-    # Look up the game in the registry. Return if a match is found.
-    case Horde.Registry.lookup(Leafblower.ProcessRegistry, game_code) do
-      [] -> false
-      [{pid, _} | _] when is_pid(pid) -> true
-    end
+    Leafblower.GameSupervisor.find_game(game_code) != nil
   end
 
   defp start_timer(data, action_meta) do
