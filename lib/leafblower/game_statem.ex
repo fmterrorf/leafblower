@@ -2,22 +2,25 @@ defmodule Leafblower.GameStatem do
   use GenStateMachine, callback_mode: [:handle_event_function, :state_enter]
   alias Leafblower.{GameTicker, ProcessRegistry}
 
+  @type player_id :: binary()
+
+  @type player_info :: %{player_id() => %{name: binary()}}
+
   @type status :: :waiting_for_players | :round_started_waiting_for_response | :round_ended
 
   @type data :: %{
           id: binary(),
           active_players: MapSet.t(),
-          # player_info -> player_id: %{name: string}
-          player_info: map(),
+          player_info: player_info(),
           round_number: non_neg_integer(),
-          round_player_answers: %{binary() => any()},
-          leader_player_id: binary() | nil,
-          winner_player_id: binary() | nil,
+          round_player_answers: %{player_id() => binary()},
+          leader_player_id: player_id() | nil,
+          winner_player_id: player_id() | nil,
           min_player_count: non_neg_integer(),
           countdown_duration: non_neg_integer(),
-          player_score: %{binary() => non_neg_integer()},
+          player_score: %{player_id() => non_neg_integer()},
           deck: Leafblower.Deck.t(),
-          player_cards: %{binary() => MapSet.t(binary())},
+          player_cards: %{player_id() => MapSet.t(binary())},
           black_card: binary() | nil,
           discard_pile: MapSet.t()
         }

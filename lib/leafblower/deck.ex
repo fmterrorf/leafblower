@@ -64,8 +64,8 @@ defmodule Leafblower.Deck do
 
   def take_black_card(deck) do
     [taken_card] = Enum.take(deck.black, 1)
-    white = MapSet.delete(deck.white, taken_card)
-    {taken_card, %{deck | white: white}}
+    black = MapSet.delete(deck.black, taken_card)
+    {taken_card, %{deck | black: black}}
   end
 
   def card(id, :black) do
