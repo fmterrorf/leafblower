@@ -25,7 +25,7 @@ defmodule LeafblowerWeb.Router do
     live "/", GameSplashLive
 
     scope "/:id" do
-      pipe_through :ingame
+      # pipe_through :ingame
       live "/", GameLive
     end
   end

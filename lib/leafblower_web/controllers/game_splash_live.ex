@@ -18,30 +18,30 @@ defmodule LeafblowerWeb.GameSplashLive do
   end
 
   def handle_event("new_game", %{"user" => params}, socket) do
-    id = Ecto.UUID.generate()
+    {:ok, code} = Leafblower.GameStatem.generate_game_code()
 
     data =
       cast_user(params)
       |> Ecto.Changeset.apply_changes()
 
     {:ok, game} =
-      Leafblower.GameCache.new_game(id: id, countdown_duration: 10, min_player_count: 2)
+      Leafblower.GameSupervisor.new_game(id: code, countdown_duration: 10, min_player_count: 2)
 
     Leafblower.GameStatem.join_player(game, socket.assigns.user_id, data.name)
 
     {:noreply,
      socket
-     |> push_redirect(to: Routes.live_path(socket, LeafblowerWeb.GameLive, id), replace: true)}
+     |> push_redirect(to: Routes.live_path(socket, LeafblowerWeb.GameLive, code), replace: true)}
   end
 
   def render(assigns) do
     ~H"""
     <.form let={f} for={@changeset} phx-change="validate" phx-submit="new_game" as="user">
       <%= label f, :name %>
-      <%= text_input f, :name %>
+      <%= text_input f, :name, placeholder: "Enter name you want to show in the game" %>
       <%= error_tag f, :name %>
 
-      <%= submit "New Game", [disabled: length(@changeset.errors) > 0] %>
+      <%= submit "Start a new game", [disabled: length(@changeset.errors) > 0] %>
     </.form>
     """
   end

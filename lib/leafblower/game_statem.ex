@@ -281,6 +281,38 @@ defmodule Leafblower.GameStatem do
     :keep_state_and_data
   end
 
+  def generate_game_code() do
+    # Generate 3 server codes to try. Take the first that is unused.
+    # If no unused ones found, add an error
+    codes = Enum.map(1..3, fn _ -> do_generate_code() end)
+
+    case Enum.find(codes, &(!server_found?(&1))) do
+      nil ->
+        # no unused game code found. Report server busy, try again later.
+        {:error, "Didn't find unused code, try again later"}
+
+      code ->
+        {:ok, code}
+    end
+  end
+
+  defp do_generate_code() do
+    # Generate a single 4 character random code
+    range = ?A..?Z
+
+    1..5
+    |> Enum.map(fn _ -> [Enum.random(range)] |> List.to_string() end)
+    |> Enum.join("")
+  end
+
+  defp server_found?(game_code) do
+    # Look up the game in the registry. Return if a match is found.
+    case Horde.Registry.lookup(Leafblower.ProcessRegistry, game_code) do
+      [] -> false
+      [{pid, _} | _] when is_pid(pid) -> true
+    end
+  end
+
   defp start_timer(data, action_meta) do
     data.id
     |> GameTicker.via_tuple()
