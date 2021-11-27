@@ -44,7 +44,7 @@ defmodule LeafblowerWeb.GameLive do
     {:ok,
      socket
      |> put_flash(:info, "Game not found")
-     |> redirect(to: Routes.live_path(socket, LeafblowerWeb.GameSplashLive))}
+     |> redirect(to: Routes.game_splash_path(socket, :index))}
   end
 
   @impl true
@@ -203,7 +203,10 @@ defmodule LeafblowerWeb.GameLive do
     }
 
     ~H"""
-    <pre>Game code: <%= @game_id %></pre>
+    <pre>
+      Game code: <%= @game_id %>
+      Share this with other to play!
+    </pre>
     <%= if @is_leader? do%>
       <button phx-click="start_round" {[disabled: @disabled]}>Start Game</button>
     <% end %>
