@@ -15,7 +15,6 @@ defmodule Leafblower.DeckTest do
         %{"player_id1" => MapSet.new(["z"]), "player_id2" => MapSet.new()},
         1
       )
-      |> IO.inspect()
 
     assert MapSet.size(player_cards["player_id1"]) == 1
     assert MapSet.size(player_cards["player_id2"]) == 1

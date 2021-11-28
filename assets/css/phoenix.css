@@ -17,7 +17,7 @@ html {
 
 body {
   color: #000000;
-  font-family: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 1.6em;
   font-weight: 300;
   letter-spacing: .01em;
@@ -392,7 +392,7 @@ ol {
 }
 
 ul {
-  list-style: circle inside
+  list-style: inside
 }
 
 .button, button, dd, dt, li {
@@ -537,7 +537,7 @@ h6 {
 }
 
 pre {
-  padding: 1em;
+  padding: 0.5em;
 }
 
 .container {
