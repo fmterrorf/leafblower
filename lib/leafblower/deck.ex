@@ -80,7 +80,7 @@ defmodule Leafblower.Deck do
   end
 
   def take_black_card(deck) do
-    [taken_card] = Enum.take(deck.black, 1)
+    [taken_card] = Enum.take_random(deck.black, 1)
     black = MapSet.delete(deck.black, taken_card)
     {taken_card, %{deck | black: black}}
   end
