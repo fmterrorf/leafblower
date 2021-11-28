@@ -208,7 +208,7 @@ defmodule LeafblowerWeb.GameLive do
     }
 
     ~H"""
-    <pre>Game code: <b><%= @game_id %></b><br/>Share it with your fiends to play!</pre>
+    <pre>Game code: <b><%= @game_id %></b><br/>Share it with your friends to play!</pre>
     <%= if @is_leader? do%>
       <button phx-click="start_round" {[disabled: @disabled]}>Start Game</button>
     <% end %>
