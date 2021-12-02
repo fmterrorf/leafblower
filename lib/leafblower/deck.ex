@@ -1,8 +1,9 @@
 defmodule Leafblower.Deck.Helpers do
+  @file_path Application.app_dir(:leafblower, "priv") |> Path.join("cards_against.json")
+  @external_resource @file_path
   def load_cards() do
     for item <-
-          Application.app_dir(:leafblower, "priv")
-          |> Path.join("cards_against.json")
+          @file_path
           |> File.read!()
           |> Jason.decode!(),
         into: %{} do
@@ -87,6 +88,10 @@ defmodule Leafblower.Deck do
 
   def card(id, :black) do
     @all_black_cards[id]
+  end
+
+  def card(ids, :white) when is_list(ids) do
+    Map.take(@all_white_cards, ids)
   end
 
   def card(id, :white) do
