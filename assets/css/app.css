@@ -132,6 +132,10 @@
   justify-content: center;
 }
 
+.multi-card-wrapper:not(:first-child) {
+  border-left: black solid 3px;
+}
+
 @media (max-width: 576px) { /* Small devices (landscape phones, 576px and up) */
     .card-container { 
       scroll-snap-type: x mandatory;
@@ -142,7 +146,7 @@
 
     .card-container > * {
       flex-shrink: 0;
-      scroll-snap-align: start;
+      scroll-snap-align: center;
     }
 }
 

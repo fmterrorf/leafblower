@@ -10,7 +10,8 @@ defmodule Leafblower.GameStatem do
           active_players: MapSet.t(player_id()),
           player_info: player_info(),
           round_number: non_neg_integer(),
-          round_player_answers: %{player_id() => Deck.card()},
+          round_player_answers: %{player_id() => list(binary())},
+          required_white_cards_count: non_neg_integer | nil,
           leader_player_id: player_id() | nil,
           winner_player_id: player_id() | nil,
           min_player_count: non_neg_integer(),
@@ -44,6 +45,7 @@ defmodule Leafblower.GameStatem do
     player_info = Keyword.get(arg, :player_info, %{})
     deck = Keyword.get_lazy(arg, :deck, &Leafblower.Deck.get_cards/0)
     player_cards = Keyword.get(arg, :player_cards, %{})
+    required_white_cards_count = Keyword.get(arg, :required_white_cards_count)
 
     GenStateMachine.start_link(
       __MODULE__,
@@ -60,7 +62,8 @@ defmodule Leafblower.GameStatem do
         player_cards: player_cards,
         deck: deck,
         winner_player_id: nil,
-        black_card: nil
+        black_card: nil,
+        required_white_cards_count: required_white_cards_count
       },
       name: via_tuple(id)
     )
@@ -88,6 +91,10 @@ defmodule Leafblower.GameStatem do
   def init(init_arg) do
     {:ok, :waiting_for_players, init_arg}
   end
+
+  @spec handle_event(term, term, status(), data()) ::
+          GenStateMachine.event_handler_result(status())
+  def handle_event(atom, old_state, state, data)
 
   @impl true
   def handle_event({:call, from}, :get_state, status, data) do
@@ -159,12 +166,23 @@ defmodule Leafblower.GameStatem do
         :cast,
         {:submit_answer, player_id, answer},
         :round_started_waiting_for_response,
-        %{round_player_answers: round_player_answers} = data
+        data
       ) do
     data = %{
       data
-      | round_player_answers: Map.put(round_player_answers, player_id, answer),
-        player_cards: Map.update!(data.player_cards, player_id, &MapSet.delete(&1, answer))
+      | round_player_answers:
+          Map.update(
+            data.round_player_answers,
+            player_id,
+            [answer],
+            fn old_value -> old_value ++ [answer] end
+          ),
+        player_cards:
+          Map.update!(
+            data.player_cards,
+            player_id,
+            &MapSet.delete(&1, answer)
+          )
     }
 
     if all_players_answered?(data) do
@@ -223,26 +241,22 @@ defmodule Leafblower.GameStatem do
     if all_players_answered?(data) do
       :keep_state_and_data
     else
-      player_anwered_ids =
-        Map.keys(data.round_player_answers)
-        |> MapSet.new()
-
-      player_without_answer_ids =
-        MapSet.delete(data.active_players, data.leader_player_id)
-        |> MapSet.difference(player_anwered_ids)
-
       player_id_card_taken_and_cards =
-        for {player_id, cards} <-
-              Map.take(data.player_cards, MapSet.to_list(player_without_answer_ids)) do
-          card_taken = Enum.random(cards)
-          new_cards = MapSet.delete(cards, card_taken)
-          {player_id, card_taken, new_cards}
+        for player_id <- MapSet.delete(data.active_players, data.leader_player_id),
+            cards = data.player_cards[player_id],
+            cards_needed =
+              data.required_white_cards_count -
+                length(Map.get(data.round_player_answers, player_id, [])),
+            cards_needed > 0 do
+          cards_taken = Enum.take_random(cards, cards_needed)
+          {player_id, cards_taken, MapSet.difference(cards, MapSet.new(cards_taken))}
         end
 
       round_player_answers =
-        Enum.into(player_id_card_taken_and_cards, data.round_player_answers, fn {player_id, card,
+        Enum.into(player_id_card_taken_and_cards, data.round_player_answers, fn {player_id,
+                                                                                 cards_taken,
                                                                                  _} ->
-          {player_id, card}
+          {player_id, Map.get(data.round_player_answers, player_id, []) ++ cards_taken}
         end)
 
       player_cards =
@@ -262,10 +276,18 @@ defmodule Leafblower.GameStatem do
   # internal
   def handle_event(:internal, :deal_cards, _state, data) do
     {black_card, deck} = Leafblower.Deck.take_black_card(data.deck)
+    %{"pick" => required_white_cards_count} = Leafblower.Deck.card(black_card, :black)
 
     {player_cards, deck} = Leafblower.Deck.deal_white_card(deck, data.player_cards)
 
-    {:keep_state, %{data | black_card: black_card, deck: deck, player_cards: player_cards}}
+    {:keep_state,
+     %{
+       data
+       | black_card: black_card,
+         deck: deck,
+         player_cards: player_cards,
+         required_white_cards_count: required_white_cards_count
+     }}
   end
 
   def handle_event(:internal, :broadcast, status, data) do
@@ -350,7 +372,15 @@ defmodule Leafblower.GameStatem do
   end
 
   defp all_players_answered?(data) do
-    MapSet.size(data.active_players) - 1 == map_size(data.round_player_answers)
+    current_player_count_minus_leader =
+      (MapSet.size(data.active_players) - 1) * data.required_white_cards_count
+
+    all_cards =
+      Map.values(data.round_player_answers)
+      |> Enum.map(&length/1)
+      |> Enum.sum()
+
+    current_player_count_minus_leader == all_cards
   end
 
   defp topic(id), do: "#{__MODULE__}/#{id}"
