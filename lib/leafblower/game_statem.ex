@@ -256,7 +256,7 @@ defmodule Leafblower.GameStatem do
         Enum.into(player_id_card_taken_and_cards, data.round_player_answers, fn {player_id,
                                                                                  cards_taken,
                                                                                  _} ->
-          {player_id, data.round_player_answers[player_id] ++ cards_taken}
+          {player_id, Map.get(data.round_player_answers, player_id, []) ++ cards_taken}
         end)
 
       player_cards =
