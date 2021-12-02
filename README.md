@@ -14,3 +14,7 @@ To run this project locally simply run
 
     mix deps.get
     mix phx.server
+
+# FAQ
+
+- Where did you get the card packs?  I got it from [JSON Against Humanity](https://github.com/crhallberg/json-against-humanity)
