@@ -146,10 +146,11 @@ defmodule LeafblowerWeb.GameLive do
 
   def render(assigns) do
     ~H"""
-    <pre><%= Atom.to_string(@game_status) %></pre>
+    <pre><%= Atom.to_string(@game_status) %>
     <%= if @countdown_left != nil do %>
-      <pre id="countdown">Countdown: <%= @countdown_left %></pre>
-    <% end %>
+    Countdown: <%= @countdown_left %>
+    <% end %></pre>
+
 
     <%= case @game_status do
       :waiting_for_players -> render_waiting_for_players(
@@ -181,6 +182,7 @@ defmodule LeafblowerWeb.GameLive do
         @game_data.player_score,
         @game_data.player_info,
         @user_id,
+        @game_data.black_card,
         @is_leader?
       )
       _ -> ""
@@ -238,19 +240,19 @@ defmodule LeafblowerWeb.GameLive do
 
     black_card = Deck.card(black_card_id, :black)
     has_answered? =  Map.has_key?(round_player_answers, player_id)
+    needs_more_answer? = length(round_player_answers[player_id] || []) != black_card["pick"]
 
     assigns = %{
       active_players: active_players,
       leader_player_id: leader_player_id,
       round_player_answers: round_player_answers,
-      # disabled: Map.has_key?(round_player_answers, player_id),
       cards: cards,
       black_card: black_card,
       player_info: player_info,
       is_leader?: is_leader?,
       player_id: player_id,
       has_answered?: has_answered?,
-      needs_more_answer?:  length(round_player_answers[player_id] || []) != black_card["pick"]
+      needs_more_answer?:  needs_more_answer?
     }
 
     ~H"""
@@ -267,7 +269,7 @@ defmodule LeafblowerWeb.GameLive do
         <%= if @has_answered? do %>
           <b>You picked</b>
           <div class="card-container">
-            <%= render_cards(player_answer_cards_to_info(@round_player_answers[@player_id]), "light") %>
+            <%= render_cards(get_white_cards(@round_player_answers[@player_id]), "light") %>
           </div>
           <%= if @needs_more_answer? do %>
             <b>Pick more cards</b>
@@ -338,13 +340,13 @@ defmodule LeafblowerWeb.GameLive do
       <%= if @has_answers? do %>
         <h4>Pick a winner</h4>
         <ul class="card-container">
-          <%= for player <- Enum.map(@active_players, fn id -> @player_info[id] end),
-                  cards = @round_player_answers[player.id] |> IO.inspect(label: "WHT") do %>
-                <%= render_cards(player_answer_cards_to_info(cards), "light", [
-                  id: player.id,
+          <%= for player_id <- @active_players,
+                  cards = @round_player_answers[player_id] do %>
+                <%= render_cards(get_white_cards(cards), "light", [
+                  id: player_id,
                   class: "multi-card-wrapper pointer",
                   phx_click: "pick_winner",
-                  phx_value_id: player.id]) %>
+                  phx_value_id: player_id]) %>
           <% end %>
         </ul>
         <% else %>
@@ -353,8 +355,8 @@ defmodule LeafblowerWeb.GameLive do
       <% else %>
       <pre>Waiting for <b><%= @leader.name %></b> 👑 to a pick a winner</pre>
       <ul class="card-container">
-          <%= for player <- Enum.map(@active_players, fn id -> @player_info[id] end),
-                  cards = player_answer_cards_to_info(@round_player_answers[player.id]) do %>
+          <%= for player_id <- @active_players,
+                  cards = get_white_cards(@round_player_answers[player_id]) do %>
               <%= render_cards(cards, "light", class: "multi-card-wrapper") %>
           <% end %>
         </ul>
@@ -363,19 +365,28 @@ defmodule LeafblowerWeb.GameLive do
     """
   end
 
-  defp render_winner(winner_cards, winner_player, player_score, player_info, current_user_id, is_leader?) do
+  defp render_winner(winner_cards, winner_player, player_score, player_info, current_user_id, black_card_id, is_leader?) do
     assigns = %{
       is_leader?: is_leader?,
       winner_player: winner_player,
       player_score: player_score,
       player_info: player_info,
-      winner_cards: winner_cards |> IO.inspect(label: "winner")
+      winner_cards: winner_cards,
+      black_card: Leafblower.Deck.card(black_card_id, :black),
     }
 
     ~H"""
+    <div class="row" style="justify-content:center;">
+      <div class="card-container">
+        <div class="card dark">
+          <span class="text"><%= @black_card["text"] %></span>
+        </div>
+      </div>
+    </div>
+
     <p>And the winner for this round is <b> <%= @winner_player.name %> </b> 🎉🎉🎉 </p>
     <div class="card-container">
-      <%= render_cards(player_answer_cards_to_info(@winner_cards), "light") %>
+      <%= render_cards(get_white_cards(@winner_cards), "light") %>
     </div>
     <%= if @is_leader? do%>
       <button phx-click="start_round" >Start Next Round</button>
@@ -424,7 +435,7 @@ defmodule LeafblowerWeb.GameLive do
    """
   end
 
-  defp player_answer_cards_to_info(cards) do
+  defp get_white_cards(cards) do
     Deck.card(cards, :white)
   end
 end

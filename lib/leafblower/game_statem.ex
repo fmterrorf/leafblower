@@ -251,13 +251,12 @@ defmodule Leafblower.GameStatem do
           cards_taken = Enum.take_random(cards, cards_needed)
           {player_id, cards_taken, MapSet.difference(cards, MapSet.new(cards_taken))}
         end
-        |> IO.inspect(label: "TESTING")
 
       round_player_answers =
         Enum.into(player_id_card_taken_and_cards, data.round_player_answers, fn {player_id,
                                                                                  cards_taken,
                                                                                  _} ->
-          {player_id, cards_taken}
+          {player_id, data.round_player_answers[player_id] ++ cards_taken}
         end)
 
       player_cards =
