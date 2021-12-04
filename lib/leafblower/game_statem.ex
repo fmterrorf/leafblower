@@ -116,8 +116,7 @@ defmodule Leafblower.GameStatem do
     data =
       %{
         data
-        | # Right now we store the whole user data
-          active_players: MapSet.put(active_players, player_id),
+        | active_players: MapSet.put(active_players, player_id),
           player_score: Map.put(player_score, player_id, 0),
           player_info: Map.put(player_info, player_id, %{name: player_name, id: player_id}),
           player_cards: Map.put(player_cards, player_id, MapSet.new())
@@ -237,10 +236,13 @@ defmodule Leafblower.GameStatem do
   end
 
   # enters
+
   def handle_event(:enter, :round_started_waiting_for_response, :round_ended, data) do
     if all_players_answered?(data) do
       :keep_state_and_data
     else
+      # We want to make sure that all players have drawn the right amount of white cards based on required_white_cards_count
+      # If for some reason they didn't draw enough cards, we automatically draw it for them
       player_id_card_taken_and_cards =
         for player_id <- MapSet.delete(data.active_players, data.leader_player_id),
             cards = data.player_cards[player_id],
@@ -340,6 +342,7 @@ defmodule Leafblower.GameStatem do
     |> GameTicker.stop_tick(action_meta)
   end
 
+  # When first player joins the game (leader_player_id != nil), pick that player to be the leader
   defp maybe_assign_leader(
          %{
            leader_player_id: leader_player_id,
@@ -356,6 +359,7 @@ defmodule Leafblower.GameStatem do
     end
   end
 
+  # After a round ends, we want to pick the next player in the list to be the leader
   defp maybe_assign_leader(
          %{
            leader_player_id: leader_player_id,
@@ -363,6 +367,8 @@ defmodule Leafblower.GameStatem do
          } = data,
          :end_of_round
        ) do
+    # From what i saw, converting to list seems to always yield a sorted result. So we'll always have the same
+    #   order of players getting picked a leader
     active_players = MapSet.to_list(active_players)
 
     new_idx =

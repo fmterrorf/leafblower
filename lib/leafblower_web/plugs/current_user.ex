@@ -1,4 +1,8 @@
 defmodule LeafblowerWeb.Plugs.Currentuser do
+  @moduledoc """
+  Sets a current_user_id to the session to uniquely identify players
+  """
+
   import Plug.Conn
 
   def init(default), do: default
