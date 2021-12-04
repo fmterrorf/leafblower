@@ -165,3 +165,11 @@ footer {
 html { 
   background-color: #f7fafc;
 }
+
+.welcome-root > div { 
+  justify-content: center;
+}
+
+.welcome-root { 
+  padding-bottom: 1em;
+}

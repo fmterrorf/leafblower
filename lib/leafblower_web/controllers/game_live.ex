@@ -133,6 +133,7 @@ defmodule LeafblowerWeb.GameLive do
     ~H"""
     <%= if @game_status == :waiting_for_players do %>
       <.form let={f} for={@changeset} phx-change="validate_join_game" phx-submit="join_game" as="user">
+        <%= label f, :name %>
         <%= text_input f, :name, placeholder: "Enter your name! " %>
         <%= error_tag f, :name %>
 
