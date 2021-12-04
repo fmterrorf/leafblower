@@ -10,6 +10,13 @@ Head over to https://leafblower.fly.dev/ to test it out.
 
 # Development
 
+This project requires the following to run
+
+    erlang 23.2.1
+    elixir 1.12
+
+If you have [asdf](https://github.com/asdf-vm/asdf) installed, simply run `asdf install`
+
 To run this project locally simply run
 
     mix deps.get
