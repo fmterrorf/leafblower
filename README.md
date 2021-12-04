@@ -1,12 +1,12 @@
 # Leafblower
 
+<p align="center">
+    <img src="./docs/logo-leafblower.png" />
+</p>
+
 Play Cards Against Humanity online with friends!
 
 Head over to https://leafblower.fly.dev/ to test it out.
-
-
-![Demo](./docs/mobile_demo.gif)
-
 
 # Development
 
