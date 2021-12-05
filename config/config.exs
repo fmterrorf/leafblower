@@ -8,7 +8,7 @@
 import Config
 
 config :leafblower,
-  ecto_repos: [Leafblower.Repo]
+  game_inactivity_timeout: :timer.minutes(30)
 
 # Configures the endpoint
 config :leafblower, LeafblowerWeb.Endpoint,
