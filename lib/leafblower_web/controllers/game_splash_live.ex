@@ -66,9 +66,12 @@ defmodule LeafblowerWeb.GameSplashLive do
   end
 
   def handle_event("join_by_code", %{"code" => params}, socket) do
-     {:noreply,
+    {:noreply,
      socket
-     |> push_redirect(to: Routes.live_path(socket, LeafblowerWeb.GameLive, String.upcase(params["code"])), replace: true)}
+     |> push_redirect(
+       to: Routes.live_path(socket, LeafblowerWeb.GameLive, String.upcase(params["code"])),
+       replace: true
+     )}
   end
 
   @impl true
