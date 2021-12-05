@@ -185,35 +185,66 @@ html {
 
 .game-container {
   display: grid;
-  grid-template-columns: [left] 10rem auto auto [right];
+  grid-template-columns: [left] 1fr 2fr 1fr [right];
   grid-template-areas: "panleft mainbody panright";
 }
 
-.game-container > .panel.left {
+.game-container>.panel.left {
   grid-area: panleft;
 }
 
-.game-container > .panel.right {
+.game-container>.panel.right {
   grid-area: panright;
 }
 
-.game-container > .mainbody {
+.game-container>.mainbody {
   grid-area: mainbody;
+}
+
+.show-chat {
+  display: none;
+}
+
+#sidenav-open {
+  --easeOutExpo: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration: .6s;
 }
 
 
 @media (max-width: 50.0rem) {
-  .game-container > .panel.left {
-    grid-column-end: left;            /* left panel stops at left edge */
+  .show-chat {
+    display: block;
+    position: absolute;
+    top: 5px;
+    right: 5px;
   }
-  .game-container > .panel.right {
-    grid-column-start: right;         /* right panel starts at right edge */
+
+  .game-container>.panel.left {
+    display: none;
   }
-  .game-container > .panel {
-    display: none;                    /* neither panel is displayed */
+
+  .game-container>.panel.right {
+    grid-area: mainbody;
+    grid-column-start: left;
+    grid-column-end: right;
+    z-index: 1;
   }
-  .game-container > .mainbody {
-    grid-column-start: left;          /* mainbody starts at left edge */
-    grid-column-end: right;           /* mainbody ends at right edge */
+
+  .game-container>.mainbody {
+    grid-column-start: left;
+    grid-column-end: right;
+  }
+
+  #sidenav-open {
+    visibility: hidden;
+    transform: translateX(-110vw);
+    will-change: transform;
+    transition: transform var(--duration) var(--easeOutExpo), visibility 0s linear var(--duration)
+  }
+
+  #sidenav-open:target {
+    visibility: visible;
+    transform:translateX(0);
+    transition:transform var(--duration) var(--easeOutExpo)
   }
 }

@@ -9,7 +9,8 @@ defmodule LeafblowerWeb.GameLive do
           user_id: binary(),
           joined_in_game?: boolean(),
           countdown_left: non_neg_integer() | nil,
-          is_leader?: boolean()
+          is_leader?: boolean(),
+          show_chat: boolean()
         }
 
   @impl true
@@ -34,7 +35,8 @@ defmodule LeafblowerWeb.GameLive do
        user_id: user_id,
        countdown_left: nil,
        joined_in_game?: MapSet.member?(data.active_players, user_id),
-       is_leader?: data.leader_player_id == user_id
+       is_leader?: data.leader_player_id == user_id,
+       show_chat: false
      )
      |> clear_flash()
      |> maybe_assign_changeset()}
@@ -121,6 +123,11 @@ defmodule LeafblowerWeb.GameLive do
     {:noreply, socket}
   end
 
+
+  def handle_event("toggle_chat", _value, socket) do
+    {:noreply, assign(socket, show_chat: !socket.assigns.show_chat)}
+  end
+
   def handle_event("submit_answer", %{"id" => id}, socket) do
     %{game: game, user_id: user_id} = socket.assigns
     GameStatem.submit_answer(game, user_id, id)
@@ -157,11 +164,16 @@ defmodule LeafblowerWeb.GameLive do
     <div class="game-container">
       <div class="panel left"></div>
       <div class="mainbody">
-        <pre><%= Atom.to_string(@game_status) %>
-        <%= if @countdown_left != nil do %>
-        Countdown: <%= @countdown_left %>
-        <% end %></pre>
-
+        <div>
+          <pre><%= Atom.to_string(@game_status) %>
+          <%= if @countdown_left != nil do %>
+          Countdown: <%= @countdown_left %>
+          <% end %></pre>
+        </div>
+        <div class="show-chat">
+          <a href="#sidenav-open" id="sidenav-button" title="Open Menu" aria-label="Open Menu">Open Chat</a>
+          <a href="#" id="sidenav-close" title="Close Menu" aria-label="Close Menu" onchange="history.go(-1)">Close Chat</a>
+        </div>
 
         <%= case @game_status do
           :waiting_for_players -> render_waiting_for_players(
@@ -199,7 +211,9 @@ defmodule LeafblowerWeb.GameLive do
           _ -> ""
         end %>
       </div>
-      <div class="panel right"></div>
+      <div class="panel right">
+        <.live_component module={LeafblowerWeb.Component.GameChat} id="game" />
+      </div>
     </div>
     """
   end
