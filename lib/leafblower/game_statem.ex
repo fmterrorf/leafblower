@@ -2,6 +2,9 @@ defmodule Leafblower.GameStatem do
   use GenStateMachine, callback_mode: [:handle_event_function, :state_enter]
   alias Leafblower.{GameTicker, ProcessRegistry, Deck}
 
+  @inactivity_timeout_action {:state_timeout,
+                              Application.get_env(:leafblower, :game_inactivity_timeout),
+                              :terminate}
   @type player_id :: binary()
   @type player_info :: %{player_id() => %{name: binary()}}
   @type status :: :waiting_for_players | :round_started_waiting_for_response | :round_ended
@@ -123,7 +126,8 @@ defmodule Leafblower.GameStatem do
       }
       |> maybe_assign_leader(:start_of_game)
 
-    {:keep_state, data, [{:reply, from, :ok}, {:next_event, :internal, :broadcast}]}
+    {:keep_state, data,
+     [{:reply, from, :ok}, {:next_event, :internal, :broadcast}, @inactivity_timeout_action]}
   end
 
   @impl true
@@ -156,7 +160,8 @@ defmodule Leafblower.GameStatem do
      [
        {:reply, from, :ok},
        {:next_event, :internal, :deal_cards},
-       {:next_event, :internal, :broadcast}
+       {:next_event, :internal, :broadcast},
+       @inactivity_timeout_action
      ]}
   end
 
@@ -187,7 +192,9 @@ defmodule Leafblower.GameStatem do
     if all_players_answered?(data) do
       stop_timer(data, :no_response_countdown)
       start_timer(data, :nonexistent_winner_countdown)
-      {:next_state, :round_ended, data, [{:next_event, :internal, :broadcast}]}
+
+      {:next_state, :round_ended, data,
+       [{:next_event, :internal, :broadcast}, @inactivity_timeout_action]}
     else
       {:keep_state, data, [{:next_event, :internal, :broadcast}]}
     end
@@ -207,7 +214,9 @@ defmodule Leafblower.GameStatem do
     }
 
     stop_timer(data, :nonexistent_winner_countdown)
-    {:next_state, :show_winner, data, [{:next_event, :internal, :broadcast}]}
+
+    {:next_state, :show_winner, data,
+     [{:next_event, :internal, :broadcast}, @inactivity_timeout_action]}
   end
 
   # info
@@ -220,7 +229,9 @@ defmodule Leafblower.GameStatem do
         data
       ) do
     start_timer(data, :nonexistent_winner_countdown)
-    {:next_state, :round_ended, data, {:next_event, :internal, :broadcast}}
+
+    {:next_state, :round_ended, data, {:next_event, :internal, :broadcast},
+     @inactivity_timeout_action}
   end
 
   @impl true
@@ -300,6 +311,17 @@ defmodule Leafblower.GameStatem do
     )
 
     :keep_state_and_data
+  end
+
+  # timeout
+  def handle_event(:state_timeout, :terminate, state, data) do
+    Phoenix.PubSub.broadcast(
+      Leafblower.PubSub,
+      topic(data.id),
+      {:terminated_for_inactivity, state}
+    )
+
+    {:stop, :normal}
   end
 
   def generate_game_code() do

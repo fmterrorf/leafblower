@@ -48,6 +48,13 @@ defmodule LeafblowerWeb.GameLive do
   end
 
   @impl true
+  def handle_info({:terminated_for_inactivity, _state}, socket) do
+    {:noreply,
+     socket
+     |> put_flash(:error, "Game is terminated for inactivity")
+     |> redirect(to: Routes.game_splash_path(socket, :index))}
+  end
+
   def handle_info({:game_state_changed, state, data}, socket) do
     socket =
       case state do
@@ -238,9 +245,8 @@ defmodule LeafblowerWeb.GameLive do
          player_info,
          is_leader?
        ) do
-
     black_card = Deck.card(black_card_id, :black)
-    has_answered? =  Map.has_key?(round_player_answers, player_id)
+    has_answered? = Map.has_key?(round_player_answers, player_id)
     needs_more_answer? = length(round_player_answers[player_id] || []) != black_card["pick"]
 
     assigns = %{
@@ -253,7 +259,7 @@ defmodule LeafblowerWeb.GameLive do
       is_leader?: is_leader?,
       player_id: player_id,
       has_answered?: has_answered?,
-      needs_more_answer?:  needs_more_answer?
+      needs_more_answer?: needs_more_answer?
     }
 
     ~H"""
@@ -366,14 +372,22 @@ defmodule LeafblowerWeb.GameLive do
     """
   end
 
-  defp render_winner(winner_cards, winner_player, player_score, player_info, current_user_id, black_card_id, is_leader?) do
+  defp render_winner(
+         winner_cards,
+         winner_player,
+         player_score,
+         player_info,
+         current_user_id,
+         black_card_id,
+         is_leader?
+       ) do
     assigns = %{
       is_leader?: is_leader?,
       winner_player: winner_player,
       player_score: player_score,
       player_info: player_info,
       winner_cards: winner_cards,
-      black_card: Leafblower.Deck.card(black_card_id, :black),
+      black_card: Leafblower.Deck.card(black_card_id, :black)
     }
 
     ~H"""
@@ -416,24 +430,24 @@ defmodule LeafblowerWeb.GameLive do
   end
 
   defp render_cards(cards, color, opts \\ []) when color in ["light", "dark"] do
-   assigns = %{
-     cards: cards,
-     color: color,
-     phx_click: Keyword.get(opts, :phx_click),
-     phx_value_id: Keyword.get(opts, :phx_value_id),
-     id: Keyword.get(opts, :id),
-     class: Keyword.get(opts, :class)
-   }
+    assigns = %{
+      cards: cards,
+      color: color,
+      phx_click: Keyword.get(opts, :phx_click),
+      phx_value_id: Keyword.get(opts, :phx_value_id),
+      id: Keyword.get(opts, :id),
+      class: Keyword.get(opts, :class)
+    }
 
-   ~H"""
-   <div id={@id} phx-value-id={@phx_value_id} phx-click={@phx_click} class={@class}>
-    <%= for {id, card} <- @cards do %>
-      <div class={"card #{color}"} id={id}>
-        <span class="text"><%= card["text"] %></span>
-      </div>
-    <% end %>
-   </div>
-   """
+    ~H"""
+    <div id={@id} phx-value-id={@phx_value_id} phx-click={@phx_click} class={@class}>
+     <%= for {id, card} <- @cards do %>
+       <div class={"card #{color}"} id={id}>
+         <span class="text"><%= card["text"] %></span>
+       </div>
+     <% end %>
+    </div>
+    """
   end
 
   defp get_white_cards(cards) do
