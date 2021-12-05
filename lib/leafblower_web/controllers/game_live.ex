@@ -154,47 +154,52 @@ defmodule LeafblowerWeb.GameLive do
 
   def render(assigns) do
     ~H"""
-    <div class="container">
-      <pre><%= Atom.to_string(@game_status) %>
-      <%= if @countdown_left != nil do %>
-      Countdown: <%= @countdown_left %>
-      <% end %></pre>
+    <div class="game-container">
+      <div class="panel left"></div>
+      <div class="mainbody">
+        <pre><%= Atom.to_string(@game_status) %>
+        <%= if @countdown_left != nil do %>
+        Countdown: <%= @countdown_left %>
+        <% end %></pre>
 
-      <%= case @game_status do
-        :waiting_for_players -> render_waiting_for_players(
-          @game_data.id,
-          @game_data.active_players,
-          @game_data.min_player_count,
-          @game_data.player_info,
-          @user_id,
-          @is_leader?)
-        :round_started_waiting_for_response -> render_round_started_waiting_for_response(
-          @user_id,
-          @game_data.active_players,
-          @game_data.round_player_answers,
-          @game_data.leader_player_id,
-          @game_data.player_cards[@user_id],
-          @game_data.black_card,
-          @game_data.player_info,
-          @is_leader?)
-        :round_ended -> render_round_ended(
-          @game_data.active_players,
-          @game_data.round_player_answers,
-          @game_data.player_info,
-          @game_data.black_card,
-          @game_data.leader_player_id,
-          @is_leader?)
-        :show_winner -> render_winner(
-          @game_data.round_player_answers[@game_data.winner_player_id],
-          @game_data.player_info[@game_data.winner_player_id],
-          @game_data.player_score,
-          @game_data.player_info,
-          @user_id,
-          @game_data.black_card,
-          @is_leader?
-        )
-        _ -> ""
-      end %>
+
+        <%= case @game_status do
+          :waiting_for_players -> render_waiting_for_players(
+            @game_data.id,
+            @game_data.active_players,
+            @game_data.min_player_count,
+            @game_data.player_info,
+            @user_id,
+            @is_leader?)
+          :round_started_waiting_for_response -> render_round_started_waiting_for_response(
+            @user_id,
+            @game_data.active_players,
+            @game_data.round_player_answers,
+            @game_data.leader_player_id,
+            @game_data.player_cards[@user_id],
+            @game_data.black_card,
+            @game_data.player_info,
+            @is_leader?)
+          :round_ended -> render_round_ended(
+            @game_data.active_players,
+            @game_data.round_player_answers,
+            @game_data.player_info,
+            @game_data.black_card,
+            @game_data.leader_player_id,
+            @is_leader?)
+          :show_winner -> render_winner(
+            @game_data.round_player_answers[@game_data.winner_player_id],
+            @game_data.player_info[@game_data.winner_player_id],
+            @game_data.player_score,
+            @game_data.player_info,
+            @user_id,
+            @game_data.black_card,
+            @is_leader?
+          )
+          _ -> ""
+        end %>
+      </div>
+      <div class="panel right"></div>
     </div>
     """
   end

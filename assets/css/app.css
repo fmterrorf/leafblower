@@ -9,27 +9,33 @@
   border: 1px solid transparent;
   border-radius: 4px;
 }
+
 .alert-info {
   color: #31708f;
   background-color: #d9edf7;
   border-color: #bce8f1;
 }
+
 .alert-warning {
   color: #8a6d3b;
   background-color: #fcf8e3;
   border-color: #faebcc;
 }
+
 .alert-danger {
   color: #a94442;
   background-color: #f2dede;
   border-color: #ebccd1;
 }
+
 .alert p {
   margin-bottom: 0;
 }
+
 .alert:empty {
   display: none;
 }
+
 .invalid-feedback {
   color: #a94442;
   display: block;
@@ -47,15 +53,16 @@
   transition: opacity 1s ease-out;
 }
 
-.phx-disconnected{
+.phx-disconnected {
   cursor: wait;
 }
-.phx-disconnected *{
+
+.phx-disconnected * {
   pointer-events: none;
 }
 
 .phx-modal {
-  opacity: 1!important;
+  opacity: 1 !important;
   position: fixed;
   z-index: 1;
   left: 0;
@@ -63,8 +70,8 @@
   width: 100%;
   height: 100%;
   overflow: auto;
-  background-color: rgb(0,0,0);
-  background-color: rgba(0,0,0,0.4);
+  background-color: rgb(0, 0, 0);
+  background-color: rgba(0, 0, 0, 0.4);
 }
 
 .phx-modal-content {
@@ -125,8 +132,8 @@
   padding: 2rem;
 }
 
-.card-container { 
-  display: flex;   
+.card-container {
+  display: flex;
   flex-wrap: wrap;
   list-style: none;
   justify-content: center;
@@ -136,40 +143,77 @@
   border-left: black solid 3px;
 }
 
-@media (max-width: 576px) { /* Small devices (landscape phones, 576px and up) */
-    .card-container { 
-      scroll-snap-type: x mandatory;
-      overflow-x: auto;
-      flex-wrap: nowrap;
-      justify-content: unset;
-    }
+@media (max-width: 576px) {
 
-    .card-container > * {
-      flex-shrink: 0;
-      scroll-snap-align: center;
-    }
+  /* Small devices (landscape phones, 576px and up) */
+  .card-container {
+    scroll-snap-type: x mandatory;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    justify-content: unset;
+  }
+
+  .card-container>* {
+    flex-shrink: 0;
+    scroll-snap-align: center;
+  }
 }
 
-header { 
+header {
   padding-top: 0.5em;
   padding-bottom: 0.5em;
 }
 
-footer { 
+footer {
   margin-top: 2em;
   font-weight: 600;
   color: #43484b;
   font-size: 0.7em;
 }
 
-html { 
+html {
   background-color: #f7fafc;
 }
 
-.welcome-root > div { 
+.welcome-root>div {
   justify-content: center;
 }
 
-.welcome-root { 
+.welcome-root {
   padding-bottom: 1em;
+}
+
+.game-container {
+  display: grid;
+  grid-template-columns: [left] 10rem auto auto [right];
+  grid-template-areas: "panleft mainbody panright";
+}
+
+.game-container > .panel.left {
+  grid-area: panleft;
+}
+
+.game-container > .panel.right {
+  grid-area: panright;
+}
+
+.game-container > .mainbody {
+  grid-area: mainbody;
+}
+
+
+@media (max-width: 50.0rem) {
+  .game-container > .panel.left {
+    grid-column-end: left;            /* left panel stops at left edge */
+  }
+  .game-container > .panel.right {
+    grid-column-start: right;         /* right panel starts at right edge */
+  }
+  .game-container > .panel {
+    display: none;                    /* neither panel is displayed */
+  }
+  .game-container > .mainbody {
+    grid-column-start: left;          /* mainbody starts at left edge */
+    grid-column-end: right;           /* mainbody ends at right edge */
+  }
 }

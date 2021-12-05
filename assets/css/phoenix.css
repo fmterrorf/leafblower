@@ -596,20 +596,3 @@ header nav a {
 .phx-connected { 
   height: 100%;
 }
-
-@media (min-width: 40.0rem) {
-
-  /* Small devices (landscape phones, 576px and up) */
-  header section {
-    flex-direction: row;
-  }
-
-  header nav ul {
-    margin: 1rem;
-  }
-
-  .phx-logo {
-    flex-basis: 527px;
-    margin: 2rem 1rem;
-  }
-}
