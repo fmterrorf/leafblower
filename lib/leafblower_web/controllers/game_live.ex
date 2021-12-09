@@ -25,6 +25,7 @@ defmodule LeafblowerWeb.GameLive do
     if connected?(socket) do
       GameStatem.subscribe(data.id)
       GameTicker.subscribe(data.id)
+      LeafblowerWeb.Component.GameChat.chat_subscribe(data.id)
     end
 
     {:ok,
@@ -36,7 +37,8 @@ defmodule LeafblowerWeb.GameLive do
        countdown_left: nil,
        joined_in_game?: MapSet.member?(data.active_players, user_id),
        is_leader?: data.leader_player_id == user_id,
-       show_chat: false
+       show_chat: false,
+       message: nil
      )
      |> clear_flash()
      |> maybe_assign_changeset()}
@@ -81,6 +83,10 @@ defmodule LeafblowerWeb.GameLive do
 
   def handle_info({:ticker_ticked, _countdown_left}, socket) do
     {:noreply, assign(socket, countdown_left: nil)}
+  end
+
+  def handle_info({:new_message, message}, socket) do
+    {:noreply, assign(socket, message: message)}
   end
 
   defp maybe_assign_changeset(%{assigns: %{joined_in_game?: false}} = socket) do
@@ -164,11 +170,11 @@ defmodule LeafblowerWeb.GameLive do
     <div class="game-container">
       <div class="panel left"></div>
       <div class="mainbody">
-        <div>
-          <pre><%= Atom.to_string(@game_status) %>
-          <%= if @countdown_left != nil do %>
-          Countdown: <%= @countdown_left %>
-          <% end %></pre>
+        <%= if @countdown_left != nil do %>
+          <progress class="row row-no-padding" value={@countdown_left} max={@game_data.countdown_duration}></progress>
+        <% end %>
+        <div class="row row-no-padding">
+          <pre><%= Atom.to_string(@game_status) %></pre>
         </div>
         <div class="show-chat">
           <a href="#sidenav-open" id="sidenav-button" title="Open Menu" aria-label="Open Menu">Open Chat</a>
@@ -212,7 +218,12 @@ defmodule LeafblowerWeb.GameLive do
         end %>
       </div>
       <div class="panel right">
-        <.live_component module={LeafblowerWeb.Component.GameChat} id="game" />
+        <.live_component
+          module={LeafblowerWeb.Component.GameChat} id="game_chat"
+          message={@message}
+          player_info={@game_data.player_info}
+          game_id={@game_data.id}
+          user_id={@user_id} />
       </div>
     </div>
     """

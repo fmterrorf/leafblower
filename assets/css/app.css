@@ -185,7 +185,8 @@ html {
 
 .game-container {
   display: grid;
-  grid-template-columns: [left] 1fr 2fr 1fr [right];
+  gap: 0.5rem;
+  grid-template-columns: [left] 0.25fr 2fr 1fr [right];
   grid-template-areas: "panleft mainbody panright";
 }
 
