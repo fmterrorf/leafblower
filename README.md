@@ -8,6 +8,10 @@ Play Cards Against Humanity online with friends!
 
 Head over to https://leafblower.fly.dev/ to test it out.
 
+**Features**
+- In-game chat. So you can talk 💩 all you want
+- Mobile friendly
+
 # Development
 
 This project requires the following to run
