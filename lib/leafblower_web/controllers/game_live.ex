@@ -1,5 +1,5 @@
 defmodule LeafblowerWeb.GameLive do
-  use LeafblowerWeb, :live_view
+  use LeafblowerWeb, :ingame_live_view
   alias Leafblower.{GameStatem, GameSupervisor, GameTicker, Deck}
 
   @type assigns :: %{
@@ -9,7 +9,8 @@ defmodule LeafblowerWeb.GameLive do
           user_id: binary(),
           joined_in_game?: boolean(),
           countdown_left: non_neg_integer() | nil,
-          is_leader?: boolean()
+          is_leader?: boolean(),
+          show_chat: boolean()
         }
 
   @impl true
@@ -24,6 +25,7 @@ defmodule LeafblowerWeb.GameLive do
     if connected?(socket) do
       GameStatem.subscribe(data.id)
       GameTicker.subscribe(data.id)
+      LeafblowerWeb.Component.GameChat.chat_subscribe(data.id)
     end
 
     {:ok,
@@ -34,7 +36,9 @@ defmodule LeafblowerWeb.GameLive do
        user_id: user_id,
        countdown_left: nil,
        joined_in_game?: MapSet.member?(data.active_players, user_id),
-       is_leader?: data.leader_player_id == user_id
+       is_leader?: data.leader_player_id == user_id,
+       show_chat: false,
+       message: nil
      )
      |> clear_flash()
      |> maybe_assign_changeset()}
@@ -81,6 +85,10 @@ defmodule LeafblowerWeb.GameLive do
     {:noreply, assign(socket, countdown_left: nil)}
   end
 
+  def handle_info({:new_message, message}, socket) do
+    {:noreply, assign(socket, message: message)}
+  end
+
   defp maybe_assign_changeset(%{assigns: %{joined_in_game?: false}} = socket) do
     assign(socket, changeset: cast_user())
   end
@@ -121,6 +129,11 @@ defmodule LeafblowerWeb.GameLive do
     {:noreply, socket}
   end
 
+
+  def handle_event("toggle_chat", _value, socket) do
+    {:noreply, assign(socket, show_chat: !socket.assigns.show_chat)}
+  end
+
   def handle_event("submit_answer", %{"id" => id}, socket) do
     %{game: game, user_id: user_id} = socket.assigns
     GameStatem.submit_answer(game, user_id, id)
@@ -140,10 +153,11 @@ defmodule LeafblowerWeb.GameLive do
     ~H"""
     <%= if @game_status == :waiting_for_players do %>
       <.form let={f} for={@changeset} phx-change="validate_join_game" phx-submit="join_game" as="user">
-        <%= label f, :name %>
-        <%= text_input f, :name, placeholder: "Enter your name! " %>
-        <%= error_tag f, :name %>
-
+        <div>
+          <%= label f, :name %>
+          <%= text_input f, :name, placeholder: "Enter your name! " %>
+          <%= error_tag f, :name %>
+        </div>
         <%= submit "Join game", [disabled: length(@changeset.errors) > 0] %>
       </.form>
     <% else %>
@@ -154,47 +168,67 @@ defmodule LeafblowerWeb.GameLive do
 
   def render(assigns) do
     ~H"""
-    <pre><%= Atom.to_string(@game_status) %>
-    <%= if @countdown_left != nil do %>
-    Countdown: <%= @countdown_left %>
-    <% end %></pre>
+    <div class="game-container">
+      <div class="panel left"></div>
+      <div class="mainbody">
+        <%= if @countdown_left != nil do %>
+          <progress class="row row-no-padding" value={@countdown_left} max={@game_data.countdown_duration}></progress>
+        <% end %>
+        <div class="row row-no-padding">
+          <pre><%= Atom.to_string(@game_status) %></pre>
+        </div>
+        <div class="show-chat">
+          <a href="#sidenav-open" class="button" id="sidenav-button" title="Open Chat" aria-label="Open Chat">Open Chat</a>
+        </div>
 
-
-    <%= case @game_status do
-      :waiting_for_players -> render_waiting_for_players(
-        @game_data.id,
-        @game_data.active_players,
-        @game_data.min_player_count,
-        @game_data.player_info,
-        @user_id,
-        @is_leader?)
-      :round_started_waiting_for_response -> render_round_started_waiting_for_response(
-        @user_id,
-        @game_data.active_players,
-        @game_data.round_player_answers,
-        @game_data.leader_player_id,
-        @game_data.player_cards[@user_id],
-        @game_data.black_card,
-        @game_data.player_info,
-        @is_leader?)
-      :round_ended -> render_round_ended(
-        @game_data.active_players,
-        @game_data.round_player_answers,
-        @game_data.player_info,
-        @game_data.black_card,
-        @game_data.leader_player_id,
-        @is_leader?)
-      :show_winner -> render_winner(
-        @game_data.round_player_answers[@game_data.winner_player_id],
-        @game_data.player_info[@game_data.winner_player_id],
-        @game_data.player_score,
-        @game_data.player_info,
-        @user_id,
-        @game_data.black_card,
-        @is_leader?
-      )
-      _ -> ""
-    end %>
+        <%= case @game_status do
+          :waiting_for_players -> render_waiting_for_players(
+            @game_data.id,
+            @game_data.active_players,
+            @game_data.min_player_count,
+            @game_data.player_info,
+            @user_id,
+            @is_leader?)
+          :round_started_waiting_for_response -> render_round_started_waiting_for_response(
+            @user_id,
+            @game_data.active_players,
+            @game_data.round_player_answers,
+            @game_data.leader_player_id,
+            @game_data.player_cards[@user_id],
+            @game_data.black_card,
+            @game_data.player_info,
+            @is_leader?)
+          :round_ended -> render_round_ended(
+            @game_data.active_players,
+            @game_data.round_player_answers,
+            @game_data.player_info,
+            @game_data.black_card,
+            @game_data.leader_player_id,
+            @is_leader?)
+          :show_winner -> render_winner(
+            @game_data.round_player_answers[@game_data.winner_player_id],
+            @game_data.player_info[@game_data.winner_player_id],
+            @game_data.player_score,
+            @game_data.player_info,
+            @user_id,
+            @game_data.black_card,
+            @is_leader?
+          )
+          _ -> ""
+        end %>
+      </div>
+      <div class="panel right" id="sidenav-open">
+        <div id="sidenav-close">
+          <a href="#" class="button" title="Close Chat" aria-label="Close Chat" onchange="history.go(-1)">Close Chat</a>
+        </div>
+        <.live_component
+          module={LeafblowerWeb.Component.GameChat} id="game_chat"
+          message={@message}
+          player_info={@game_data.player_info}
+          game_id={@game_data.id}
+          user_id={@user_id} />
+      </div>
+    </div>
     """
   end
 

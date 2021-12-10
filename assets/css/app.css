@@ -2,6 +2,12 @@
 @import "./phoenix.css";
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500&display=swap');
 
+
+html {
+  --background-color: #f7fafc;
+  background-color: var(--background-color);
+}
+
 /* Alerts and form errors used by phx.new */
 .alert {
   padding: 15px;
@@ -9,31 +15,36 @@
   border: 1px solid transparent;
   border-radius: 4px;
 }
+
 .alert-info {
   color: #31708f;
   background-color: #d9edf7;
   border-color: #bce8f1;
 }
+
 .alert-warning {
   color: #8a6d3b;
   background-color: #fcf8e3;
   border-color: #faebcc;
 }
+
 .alert-danger {
   color: #a94442;
   background-color: #f2dede;
   border-color: #ebccd1;
 }
+
 .alert p {
   margin-bottom: 0;
 }
+
 .alert:empty {
   display: none;
 }
+
 .invalid-feedback {
   color: #a94442;
   display: block;
-  margin: -1rem 0 2rem;
 }
 
 /* LiveView specific classes for your customization */
@@ -47,15 +58,16 @@
   transition: opacity 1s ease-out;
 }
 
-.phx-disconnected{
+.phx-disconnected {
   cursor: wait;
 }
-.phx-disconnected *{
+
+.phx-disconnected * {
   pointer-events: none;
 }
 
 .phx-modal {
-  opacity: 1!important;
+  opacity: 1 !important;
   position: fixed;
   z-index: 1;
   left: 0;
@@ -63,8 +75,8 @@
   width: 100%;
   height: 100%;
   overflow: auto;
-  background-color: rgb(0,0,0);
-  background-color: rgba(0,0,0,0.4);
+  background-color: rgb(0, 0, 0);
+  background-color: rgba(0, 0, 0, 0.4);
 }
 
 .phx-modal-content {
@@ -125,8 +137,8 @@
   padding: 2rem;
 }
 
-.card-container { 
-  display: flex;   
+.card-container {
+  display: flex;
   flex-wrap: wrap;
   list-style: none;
   justify-content: center;
@@ -136,40 +148,129 @@
   border-left: black solid 3px;
 }
 
-@media (max-width: 576px) { /* Small devices (landscape phones, 576px and up) */
-    .card-container { 
-      scroll-snap-type: x mandatory;
-      overflow-x: auto;
-      flex-wrap: nowrap;
-      justify-content: unset;
-    }
+@media (max-width: 576px) {
 
-    .card-container > * {
-      flex-shrink: 0;
-      scroll-snap-align: center;
-    }
+  /* Small devices (landscape phones, 576px and up) */
+  .card-container {
+    scroll-snap-type: x mandatory;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    justify-content: unset;
+  }
+
+  .card-container>* {
+    flex-shrink: 0;
+    scroll-snap-align: center;
+  }
 }
 
-header { 
+header {
   padding-top: 0.5em;
   padding-bottom: 0.5em;
 }
 
-footer { 
+footer {
   margin-top: 2em;
   font-weight: 600;
   color: #43484b;
   font-size: 0.7em;
+  text-align: center;
 }
 
-html { 
-  background-color: #f7fafc;
-}
-
-.welcome-root > div { 
+.welcome-root>div {
   justify-content: center;
 }
 
-.welcome-root { 
+.welcome-root {
   padding-bottom: 1em;
+}
+
+.game-container {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: [left] 0.25fr 2fr 1fr [right];
+  grid-template-areas: "panleft mainbody panright";
+}
+
+.game-container>.panel.left {
+  grid-area: panleft;
+}
+
+.game-container>.panel.right {
+  grid-area: panright;
+}
+
+.game-container>.mainbody {
+  grid-area: mainbody;
+}
+
+.show-chat {
+  display: none;
+}
+
+#sidenav-open {
+  --easeOutExpo: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration: .6s;
+  background-color: var(--background-color);
+}
+
+#sidenav-close {
+  visibility: hidden;
+}
+
+#chatlist {
+  padding-top: 1rem;
+  padding-left: 1rem;
+  border: 3px solid black;
+  border-radius: 1%;
+  width: 100%;
+  height: 50vh;
+  overflow: scroll;
+  list-style: none;
+}
+
+#chatlist>li {
+  margin-bottom: 0.2rem;
+}
+
+
+@media (max-width: 50.0rem) {
+  .show-chat {
+    display: block;
+  }
+
+  #sidenav-close {
+    visibility: visible;
+    text-align: right;
+    padding-top: 1rem;
+  }
+
+  .game-container>.panel.left {
+    display: none;
+  }
+
+  .game-container>.panel.right {
+    grid-area: mainbody;
+    grid-column-start: left;
+    grid-column-end: right;
+    z-index: 1;
+  }
+
+  .game-container>.mainbody {
+    grid-column-start: left;
+    grid-column-end: right;
+  }
+
+  #sidenav-open {
+    visibility: hidden;
+    transform: translateX(-110vw);
+    will-change: transform;
+    transition: transform var(--duration) var(--easeOutExpo), visibility 0s linear var(--duration)
+  }
+
+  #sidenav-open:target {
+    visibility: visible;
+    transform: translateX(0);
+    transition: transform var(--duration) var(--easeOutExpo)
+  }
 }
