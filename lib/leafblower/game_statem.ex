@@ -230,8 +230,8 @@ defmodule Leafblower.GameStatem do
       ) do
     start_timer(data, :nonexistent_winner_countdown)
 
-    {:next_state, :round_ended, data, {:next_event, :internal, :broadcast},
-     @inactivity_timeout_action}
+    {:next_state, :round_ended, data,
+     [{:next_event, :internal, :broadcast}, @inactivity_timeout_action]}
   end
 
   @impl true
