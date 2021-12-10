@@ -3,32 +3,40 @@ defmodule LeafblowerWeb.Component.GameChat do
 
   @impl true
   def mount(socket) do
-    {:ok, assign(socket, content: "")}
+    {:ok, assign(socket, changeset: cast_message())}
   end
 
   @impl true
-  def handle_event("submit", %{"content" => content}, socket) do
-    chat_publish(socket.assigns.game_id, socket.assigns.user_id, content)
-    {:noreply, assign(socket, content: "")}
+  def handle_event("submit", %{"message" => params}, socket) do
+    chat_publish(socket.assigns.game_id, socket.assigns.user_id, params["message"])
+    {:noreply, assign(socket, changeset: cast_message())}
+  end
+
+  @impl true
+  def handle_event("validate-message", %{"message" => params}, socket) do
+    {:noreply,
+     assign(socket,
+       changeset:
+         cast_message(params)
+         |> Map.put(:action, :insert)
+     )}
   end
 
   @impl true
   def render(assigns) do
-
     ~H"""
-    <aside id="sidenav-open">
-     <ul style="background-color: white; width: 100%; max-height: 50vh; overflow: scroll;" phx-hook="ChatList" phx-update="append">
+    <div>
+     <ul id="chatlist" phx-hook="ChatList" phx-update="append">
        <%= if @message do %>
        <li id={@message.id}><%= @player_info[@message.from].name %>: <%= @message.content %></li>
        <% end %>
      </ul>
-     <form phx-submit="submit" phx-target={@myself}>
-       <div>
-         <input name="content" type="text" rows="4" value={@content} />
-         <button type="submit">Submit</button>
-       </div>
-     </form>
-    </aside>
+     <.form let={f} for={@changeset} phx-target={@myself} phx-change="validate-message" phx-submit="submit" as="message">
+        <%= error_tag f, :message %>
+        <%= text_input f, :message %>
+        <%= submit "Send", [disabled: length(@changeset.errors) > 0] %>
+     </.form>
+     </div>
     """
   end
 
@@ -42,4 +50,11 @@ defmodule LeafblowerWeb.Component.GameChat do
         chat_topic(game_id),
         {:new_message, %{id: Ecto.UUID.generate(), from: user_id, content: message}}
       )
+
+  defp cast_message(params \\ %{}) do
+    {%{}, %{message: :string}}
+    |> Ecto.Changeset.cast(params, [:message])
+    |> Ecto.Changeset.validate_required([:message])
+    |> Ecto.Changeset.validate_length(:message, max: 50)
+  end
 end

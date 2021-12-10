@@ -153,10 +153,11 @@ defmodule LeafblowerWeb.GameLive do
     ~H"""
     <%= if @game_status == :waiting_for_players do %>
       <.form let={f} for={@changeset} phx-change="validate_join_game" phx-submit="join_game" as="user">
-        <%= label f, :name %>
-        <%= text_input f, :name, placeholder: "Enter your name! " %>
-        <%= error_tag f, :name %>
-
+        <div>
+          <%= label f, :name %>
+          <%= text_input f, :name, placeholder: "Enter your name! " %>
+          <%= error_tag f, :name %>
+        </div>
         <%= submit "Join game", [disabled: length(@changeset.errors) > 0] %>
       </.form>
     <% else %>
@@ -177,8 +178,7 @@ defmodule LeafblowerWeb.GameLive do
           <pre><%= Atom.to_string(@game_status) %></pre>
         </div>
         <div class="show-chat">
-          <a href="#sidenav-open" id="sidenav-button" title="Open Menu" aria-label="Open Menu">Open Chat</a>
-          <a href="#" id="sidenav-close" title="Close Menu" aria-label="Close Menu" onchange="history.go(-1)">Close Chat</a>
+          <a href="#sidenav-open" class="button" id="sidenav-button" title="Open Chat" aria-label="Open Chat">Open Chat</a>
         </div>
 
         <%= case @game_status do
@@ -217,7 +217,10 @@ defmodule LeafblowerWeb.GameLive do
           _ -> ""
         end %>
       </div>
-      <div class="panel right">
+      <div class="panel right" id="sidenav-open">
+        <div id="sidenav-close">
+          <a href="#" class="button" title="Close Chat" aria-label="Close Chat" onchange="history.go(-1)">Close Chat</a>
+        </div>
         <.live_component
           module={LeafblowerWeb.Component.GameChat} id="game_chat"
           message={@message}

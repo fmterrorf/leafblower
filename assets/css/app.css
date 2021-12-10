@@ -2,6 +2,12 @@
 @import "./phoenix.css";
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500&display=swap');
 
+
+html {
+  --background-color: #f7fafc;
+  background-color: var(--background-color);
+}
+
 /* Alerts and form errors used by phx.new */
 .alert {
   padding: 15px;
@@ -39,7 +45,6 @@
 .invalid-feedback {
   color: #a94442;
   display: block;
-  margin: -1rem 0 2rem;
 }
 
 /* LiveView specific classes for your customization */
@@ -169,10 +174,7 @@ footer {
   font-weight: 600;
   color: #43484b;
   font-size: 0.7em;
-}
-
-html {
-  background-color: #f7fafc;
+  text-align: center;
 }
 
 .welcome-root>div {
@@ -209,15 +211,38 @@ html {
 #sidenav-open {
   --easeOutExpo: cubic-bezier(0.16, 1, 0.3, 1);
   --duration: .6s;
+  background-color: var(--background-color);
+}
+
+#sidenav-close {
+  visibility: hidden;
+}
+
+#chatlist {
+  padding-top: 1rem;
+  padding-left: 1rem;
+  border: 3px solid black;
+  border-radius: 1%;
+  width: 100%;
+  height: 50vh;
+  overflow: scroll;
+  list-style: none;
+}
+
+#chatlist>li {
+  margin-bottom: 0.2rem;
 }
 
 
 @media (max-width: 50.0rem) {
   .show-chat {
     display: block;
-    position: absolute;
-    top: 5px;
-    right: 5px;
+  }
+
+  #sidenav-close {
+    visibility: visible;
+    text-align: right;
+    padding-top: 1rem;
   }
 
   .game-container>.panel.left {
@@ -245,7 +270,7 @@ html {
 
   #sidenav-open:target {
     visibility: visible;
-    transform:translateX(0);
-    transition:transform var(--duration) var(--easeOutExpo)
+    transform: translateX(0);
+    transition: transform var(--duration) var(--easeOutExpo)
   }
 }
